@@ -42,9 +42,9 @@ it('returns the approved properties for each settings group', function (OpsSetti
     expect($group->approvedProperties())->toBe($expected);
 })->with([
     'identity' => [OpsSettingsGroup::Identity, ['name', 'platform_label']],
-    'contact' => [OpsSettingsGroup::Contact, ['support_email', 'contact_phone', 'address_line_1', 'address_line_2', 'postal_code', 'city', 'country_code']],
-    'brand' => [OpsSettingsGroup::Brand, ['brand_name', 'brand_tagline', 'primary_color', 'secondary_color', 'logo_reference']],
-    'social' => [OpsSettingsGroup::Social, ['facebook_url', 'instagram_url', 'linkedin_url', 'x_url', 'youtube_url']],
-    'legal' => [OpsSettingsGroup::Legal, ['legal_entity_name', 'registration_number', 'vat_id', 'legal_notice_snippet', 'privacy_contact_email']],
-    'website_defaults' => [OpsSettingsGroup::WebsiteDefaults, ['default_site_title_pattern', 'default_footer_label', 'default_support_label']],
+    'contact' => [OpsSettingsGroup::Contact, ['support_email', 'noreply_email', 'contact_phone', 'contact_whatsapp', 'support_url', 'support_chat_url', 'support_hours', 'address_line_1', 'address_line_2', 'postal_code', 'city', 'country_code']],
+    'brand' => [OpsSettingsGroup::Brand, ['brand_name', 'brand_tagline', 'brand_claim', 'default_email_from_name', 'primary_color', 'secondary_color', 'logo_reference', 'favicon_reference', 'icon_reference', 'email_logo_reference']],
+    'social' => [OpsSettingsGroup::Social, ['facebook_url', 'instagram_url', 'linkedin_url', 'x_url', 'youtube_url', 'tiktok_url', 'threads_url', 'github_url', 'mastodon_url', 'telegram_url']],
+    'legal' => [OpsSettingsGroup::Legal, ['legal_entity_name', 'managing_director', 'registration_number', 'registration_court', 'vat_id', 'legal_notice_snippet', 'privacy_contact_email', 'imprint_url', 'privacy_policy_url', 'terms_url', 'cookie_policy_url']],
+    'website_defaults' => [OpsSettingsGroup::WebsiteDefaults, ['default_site_title_pattern', 'default_footer_label', 'default_support_label', 'default_support_cta_label', 'default_reply_to_email', 'default_locale', 'fallback_locale', 'default_timezone', 'default_currency', 'default_date_format', 'default_time_format']],
 ]);

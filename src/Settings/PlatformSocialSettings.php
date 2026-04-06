@@ -12,15 +12,25 @@ use Spatie\LaravelSettings\Settings;
  */
 class PlatformSocialSettings extends Settings
 {
-    public ?string $facebook_url;
+    public ?string $facebook_url = null;
 
-    public ?string $instagram_url;
+    public ?string $instagram_url = null;
 
-    public ?string $linkedin_url;
+    public ?string $linkedin_url = null;
 
-    public ?string $x_url;
+    public ?string $x_url = null;
 
-    public ?string $youtube_url;
+    public ?string $youtube_url = null;
+
+    public ?string $tiktok_url = null;
+
+    public ?string $threads_url = null;
+
+    public ?string $github_url = null;
+
+    public ?string $mastodon_url = null;
+
+    public ?string $telegram_url = null;
 
     public static function group(): string
     {

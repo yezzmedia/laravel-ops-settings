@@ -6,6 +6,7 @@ namespace YezzMedia\OpsSettings\Actions;
 
 use InvalidArgumentException;
 use Spatie\LaravelSettings\Settings;
+use Spatie\LaravelSettings\SettingsRepositories\SettingsRepository;
 use YezzMedia\OpsSettings\Events\OpsSettingsUpdated;
 use YezzMedia\OpsSettings\Support\OpsSettingsGroup;
 use YezzMedia\OpsSettings\Support\OpsSettingsManager;
@@ -19,7 +20,10 @@ use YezzMedia\OpsSettings\Support\OpsSettingsManager;
  */
 final class UpdateOpsSettingsAction
 {
-    public function __construct(private readonly OpsSettingsManager $manager) {}
+    public function __construct(
+        private readonly OpsSettingsManager $manager,
+        private readonly SettingsRepository $repository,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $attributes
@@ -43,6 +47,8 @@ final class UpdateOpsSettingsAction
                 ));
             }
         }
+
+        $this->seedMissingApprovedProperties($group);
 
         /** @var Settings $settings */
         $settings = app($group->settingsClass());
@@ -72,5 +78,16 @@ final class UpdateOpsSettingsAction
             context: $context,
             source: $source,
         ));
+    }
+
+    private function seedMissingApprovedProperties(OpsSettingsGroup $group): void
+    {
+        foreach ($group->approvedProperties() as $property) {
+            if ($this->repository->checkIfPropertyExists($group->value, $property)) {
+                continue;
+            }
+
+            $this->repository->createProperty($group->value, $property, null);
+        }
     }
 }

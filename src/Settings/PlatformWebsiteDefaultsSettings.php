@@ -12,11 +12,27 @@ use Spatie\LaravelSettings\Settings;
  */
 class PlatformWebsiteDefaultsSettings extends Settings
 {
-    public ?string $default_site_title_pattern;
+    public ?string $default_site_title_pattern = null;
 
-    public ?string $default_footer_label;
+    public ?string $default_footer_label = null;
 
-    public ?string $default_support_label;
+    public ?string $default_support_label = null;
+
+    public ?string $default_support_cta_label = null;
+
+    public ?string $default_reply_to_email = null;
+
+    public ?string $default_locale = null;
+
+    public ?string $fallback_locale = null;
+
+    public ?string $default_timezone = null;
+
+    public ?string $default_currency = null;
+
+    public ?string $default_date_format = null;
+
+    public ?string $default_time_format = null;
 
     public static function group(): string
     {

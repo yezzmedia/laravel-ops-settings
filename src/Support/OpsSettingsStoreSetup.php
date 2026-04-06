@@ -164,6 +164,7 @@ class OpsSettingsStoreSetup
             'add_platform_social_settings',
             'add_platform_legal_settings',
             'add_platform_website_defaults_settings',
+            'add_extended_ops_settings_fields',
         ];
     }
 

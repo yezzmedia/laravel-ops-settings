@@ -51,6 +51,30 @@ enum OpsSettingsGroup: string
         return 'ops_settings.'.$this->value;
     }
 
+    public function label(): string
+    {
+        return match ($this) {
+            self::Identity => 'Identity',
+            self::Contact => 'Contact',
+            self::Brand => 'Brand',
+            self::Social => 'Social',
+            self::Legal => 'Legal',
+            self::WebsiteDefaults => 'Website Defaults',
+        };
+    }
+
+    public function icon(): string
+    {
+        return match ($this) {
+            self::Identity => 'heroicon-o-identification',
+            self::Contact => 'heroicon-o-phone',
+            self::Brand => 'heroicon-o-paint-brush',
+            self::Social => 'heroicon-o-share',
+            self::Legal => 'heroicon-o-document-text',
+            self::WebsiteDefaults => 'heroicon-o-globe-alt',
+        };
+    }
+
     /**
      * Returns the approved property names for this group.
      * Unknown attributes must fail fast.
@@ -69,6 +93,37 @@ enum OpsSettingsGroup: string
                 fn (\ReflectionProperty $prop) => $prop->getDeclaringClass()->getName() === $class,
             ),
         ));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function requiredProperties(): array
+    {
+        return match ($this) {
+            self::Identity => ['name'],
+            self::Contact => ['support_email'],
+            self::Brand => [],
+            self::Social => [],
+            self::Legal => ['legal_entity_name', 'privacy_contact_email'],
+            self::WebsiteDefaults => ['default_locale', 'fallback_locale', 'default_timezone'],
+        };
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function publicProperties(): array
+    {
+        return match ($this) {
+            self::Brand => array_values(array_diff($this->approvedProperties(), [
+                'logo_reference',
+                'favicon_reference',
+                'icon_reference',
+                'email_logo_reference',
+            ])),
+            default => $this->approvedProperties(),
+        };
     }
 
     /**

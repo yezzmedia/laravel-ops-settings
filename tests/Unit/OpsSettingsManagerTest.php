@@ -62,6 +62,17 @@ it('reads the seeded identity name from the database', function (): void {
     expect(app(OpsSettingsManager::class)->identity()->name)->toBe('Test Operator');
 });
 
+it('loads legacy settings stores without failing on newly added properties', function (): void {
+    $contact = app(OpsSettingsManager::class)->contact();
+
+    expect($contact->support_email)->toBeNull()
+        ->and($contact->noreply_email)->toBeNull()
+        ->and($contact->contact_whatsapp)->toBeNull()
+        ->and($contact->support_url)->toBeNull()
+        ->and($contact->support_chat_url)->toBeNull()
+        ->and($contact->support_hours)->toBeNull();
+});
+
 it('invalidates the cached entry for a specific group', function (): void {
     config()->set('ops-settings.cache.enabled', true);
     app()->forgetInstance(OpsSettingsManager::class);

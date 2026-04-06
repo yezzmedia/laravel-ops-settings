@@ -10,6 +10,7 @@ use InvalidArgumentException;
 use Spatie\Activitylog\Support\ActivityLogger;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
+use Spatie\LaravelSettings\SettingsRepositories\SettingsRepository;
 use YezzMedia\Foundation\Support\PlatformPackageRegistrar;
 use YezzMedia\OpsSettings\Actions\UpdateOpsSettingsAction;
 use YezzMedia\OpsSettings\Contracts\OpsSettingsAuditWriter;
@@ -44,6 +45,7 @@ class OpsSettingsServiceProvider extends PackageServiceProvider
                 '0004_add_platform_social_settings',
                 '0005_add_platform_legal_settings',
                 '0006_add_platform_website_defaults_settings',
+                '0007_add_extended_ops_settings_fields',
             ]);
     }
 
@@ -66,6 +68,7 @@ class OpsSettingsServiceProvider extends PackageServiceProvider
         $this->app->singleton(UpdateOpsSettingsAction::class, function (): UpdateOpsSettingsAction {
             return new UpdateOpsSettingsAction(
                 manager: $this->app->make(OpsSettingsManager::class),
+                repository: $this->app->make(SettingsRepository::class),
             );
         });
     }

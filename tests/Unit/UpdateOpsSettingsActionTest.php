@@ -67,3 +67,24 @@ it('fails fast when an unknown attribute is passed', function (): void {
         ['unknown_field' => 'value'],
     ))->toThrow(InvalidArgumentException::class, 'Attribute [unknown_field] is not an approved property of settings group [identity].');
 });
+
+it('backfills missing legacy settings keys before saving expanded groups', function (): void {
+    DB::table('settings')->insert([
+        ['group' => 'contact', 'name' => 'support_email', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'contact_phone', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'address_line_1', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'address_line_2', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'postal_code', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'city', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'country_code', 'locked' => false, 'payload' => json_encode(null)],
+    ]);
+
+    app(UpdateOpsSettingsAction::class)->execute(OpsSettingsGroup::Contact, [
+        'support_email' => 'support@example.com',
+    ]);
+
+    expect(DB::table('settings')->where('group', 'contact')->pluck('name')->all())
+        ->toContain('noreply_email', 'contact_whatsapp', 'support_url', 'support_chat_url', 'support_hours')
+        ->and(DB::table('settings')->where('group', 'contact')->where('name', 'support_email')->value('payload'))
+        ->toBe(json_encode('support@example.com'));
+});
