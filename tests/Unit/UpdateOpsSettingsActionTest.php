@@ -54,6 +54,8 @@ it('dispatches OpsSettingsUpdated after a successful mutation', function (): voi
         return $event->group === OpsSettingsGroup::Identity
             && $event->changedKeys === ['name']
             && $event->actorId === 42
+            && $event->oldValues === ['name' => '']
+            && $event->newValues === ['name' => 'Dispatched']
             && $event->context === ['source_ip' => '127.0.0.1']
             && $event->source === 'test';
     });
