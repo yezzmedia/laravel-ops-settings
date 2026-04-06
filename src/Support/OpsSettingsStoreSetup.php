@@ -108,7 +108,7 @@ class OpsSettingsStoreSetup
     {
         $options = [
             '--provider' => OpsSettingsServiceProvider::class,
-            '--tag' => ['laravel-ops-settings-config'],
+            '--tag' => ['ops-settings-config'],
         ];
 
         if ($force) {

@@ -23,6 +23,7 @@ use YezzMedia\OpsSettings\Install\EnsureOpsSettingsStoreReadyInstallStep;
 use YezzMedia\OpsSettings\Install\PublishOpsSettingsMigrationsInstallStep;
 use YezzMedia\OpsSettings\Install\SeedOpsSettingsDefaultsInstallStep;
 use YezzMedia\OpsSettings\OpsSettingsPlatformPackage;
+use YezzMedia\OpsSettings\OpsSettingsServiceProvider;
 use YezzMedia\OpsSettings\Support\NullOpsSettingsAuditWriter;
 use YezzMedia\OpsSettings\Support\OpsSettingsManager;
 
@@ -51,6 +52,19 @@ it('merges the package configuration', function (): void {
         ->and(config('ops-settings.cache.store'))->toBeNull()
         ->and(config('ops-settings.audit.driver'))->toBeNull()
         ->and(config('ops-settings.defaults.seed_on_install'))->toBeTrue();
+});
+
+it('registers a publishable ops settings config file', function (): void {
+    $publishableConfigs = OpsSettingsServiceProvider::pathsToPublish(
+        OpsSettingsServiceProvider::class,
+        'ops-settings-config',
+    );
+
+    expect($publishableConfigs)->toHaveCount(1)
+        ->and(array_keys($publishableConfigs)[0])->toEndWith('/config/ops-settings.php')
+        ->and(array_values($publishableConfigs))->toBe([
+            config_path('ops-settings.php'),
+        ]);
 });
 
 it('describes the approved bootstrap surface', function (): void {

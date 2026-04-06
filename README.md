@@ -54,7 +54,7 @@ Manual setup:
 
 ```bash
 composer require spatie/laravel-activitylog
-php artisan vendor:publish --tag=laravel-ops-settings-config
+php artisan vendor:publish --tag=ops-settings-config
 ```
 
 Then set `ops-settings.audit.driver` to `activitylog`.
@@ -71,7 +71,7 @@ php artisan website:install --configure-audit --audit-package=all
 Publish the config file:
 
 ```bash
-php artisan vendor:publish --tag=laravel-ops-settings-config
+php artisan vendor:publish --tag=ops-settings-config
 ```
 
 `config/ops-settings.php`:

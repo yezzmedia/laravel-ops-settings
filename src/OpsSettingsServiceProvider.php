@@ -36,7 +36,7 @@ class OpsSettingsServiceProvider extends PackageServiceProvider
     {
         $package
             ->name('laravel-ops-settings')
-            ->hasConfigFile()
+            ->hasConfigFile('ops-settings')
             ->hasMigrations([
                 '0001_add_operator_identity_settings',
                 '0002_add_platform_contact_settings',
