@@ -15,8 +15,10 @@ use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Text;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 use UnitEnum;
 use YezzMedia\OpsSettings\Actions\UpdateOpsSettingsAction;
 use YezzMedia\OpsSettings\Support\OpsSettingsGroup;
@@ -63,6 +65,12 @@ abstract class OpsSettingsGroupPage extends Page
         app(UpdateOpsSettingsAction::class)->execute(
             $this->getGroup(),
             $this->data,
+            actorId: Auth::id(),
+            context: [
+                'request_id' => (string) Str::uuid(),
+                'panel_id' => (string) config('ops.panel.id', 'ops'),
+            ],
+            source: 'ops_panel',
         );
 
         Notification::make()

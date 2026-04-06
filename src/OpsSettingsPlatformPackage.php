@@ -8,6 +8,7 @@ use YezzMedia\Foundation\Contracts\DefinesAuditEvents;
 use YezzMedia\Foundation\Contracts\DefinesInstallSteps;
 use YezzMedia\Foundation\Contracts\DefinesPermissions;
 use YezzMedia\Foundation\Contracts\PlatformPackage;
+use YezzMedia\Foundation\Contracts\ProvidesDoctorChecks;
 use YezzMedia\Foundation\Contracts\ProvidesOpsModules;
 use YezzMedia\Foundation\Contracts\RegistersFeatures;
 use YezzMedia\Foundation\Data\AuditEventDefinition;
@@ -15,7 +16,10 @@ use YezzMedia\Foundation\Data\FeatureDefinition;
 use YezzMedia\Foundation\Data\OpsModuleDefinition;
 use YezzMedia\Foundation\Data\PackageMetadata;
 use YezzMedia\Foundation\Data\PermissionDefinition;
+use YezzMedia\Foundation\Doctor\DoctorCheck;
 use YezzMedia\Foundation\Install\InstallStep;
+use YezzMedia\OpsSettings\Doctor\OpsSettingsAuditConfiguredCheck;
+use YezzMedia\OpsSettings\Doctor\OpsSettingsStoreReadyCheck;
 use YezzMedia\OpsSettings\Install\EnsureOpsSettingsStoreReadyInstallStep;
 use YezzMedia\OpsSettings\Install\PublishOpsSettingsMigrationsInstallStep;
 use YezzMedia\OpsSettings\Install\SeedOpsSettingsDefaultsInstallStep;
@@ -23,7 +27,7 @@ use YezzMedia\OpsSettings\Install\SeedOpsSettingsDefaultsInstallStep;
 /**
  * Describes the ops-settings package surface that foundation should register.
  */
-final class OpsSettingsPlatformPackage implements DefinesAuditEvents, DefinesInstallSteps, DefinesPermissions, PlatformPackage, ProvidesOpsModules, RegistersFeatures
+final class OpsSettingsPlatformPackage implements DefinesAuditEvents, DefinesInstallSteps, DefinesPermissions, PlatformPackage, ProvidesDoctorChecks, ProvidesOpsModules, RegistersFeatures
 {
     public function metadata(): PackageMetadata
     {
@@ -114,7 +118,7 @@ final class OpsSettingsPlatformPackage implements DefinesAuditEvents, DefinesIns
                 subjectType: 'ops_settings',
                 description: 'Operator-managed global platform settings were updated.',
                 severity: 'warning',
-                contextKeys: ['group', 'changed_keys', 'actor_id', 'context', 'source'],
+                contextKeys: ['group', 'changed_keys', 'actor_id', 'old_values', 'new_values', 'context', 'source'],
             ),
         ];
     }
@@ -128,6 +132,17 @@ final class OpsSettingsPlatformPackage implements DefinesAuditEvents, DefinesIns
             app(PublishOpsSettingsMigrationsInstallStep::class),
             app(EnsureOpsSettingsStoreReadyInstallStep::class),
             app(SeedOpsSettingsDefaultsInstallStep::class),
+        ];
+    }
+
+    /**
+     * @return array<int, DoctorCheck>
+     */
+    public function doctorChecks(): array
+    {
+        return [
+            app(OpsSettingsAuditConfiguredCheck::class),
+            app(OpsSettingsStoreReadyCheck::class),
         ];
     }
 

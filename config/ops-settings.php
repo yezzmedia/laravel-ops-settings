@@ -21,6 +21,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Audit Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Controls optional persistence for normalized ops-settings audit events.
+    | The package remains runtime-safe when no audit backend is configured.
+    |
+    */
+
+    'audit' => [
+        'driver' => null,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Defaults Configuration
     |--------------------------------------------------------------------------
     |

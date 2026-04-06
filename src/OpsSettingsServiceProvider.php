@@ -5,10 +5,20 @@ declare(strict_types=1);
 namespace YezzMedia\OpsSettings;
 
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
+use Illuminate\Contracts\Events\Dispatcher;
+use InvalidArgumentException;
+use Spatie\Activitylog\Support\ActivityLogger;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 use YezzMedia\Foundation\Support\PlatformPackageRegistrar;
 use YezzMedia\OpsSettings\Actions\UpdateOpsSettingsAction;
+use YezzMedia\OpsSettings\Contracts\OpsSettingsAuditWriter;
+use YezzMedia\OpsSettings\Doctor\OpsSettingsAuditConfiguredCheck;
+use YezzMedia\OpsSettings\Doctor\OpsSettingsStoreReadyCheck;
+use YezzMedia\OpsSettings\Events\OpsSettingsUpdated;
+use YezzMedia\OpsSettings\Listeners\OpsSettingsAuditListener;
+use YezzMedia\OpsSettings\Support\ActivityLogOpsSettingsAuditWriter;
+use YezzMedia\OpsSettings\Support\NullOpsSettingsAuditWriter;
 use YezzMedia\OpsSettings\Support\OpsSettingsManager;
 use YezzMedia\OpsSettings\Support\OpsSettingsStoreSetup;
 
@@ -38,7 +48,10 @@ class OpsSettingsServiceProvider extends PackageServiceProvider
 
     public function packageRegistered(): void
     {
+        $this->app->singleton(OpsSettingsAuditWriter::class, fn (): OpsSettingsAuditWriter => $this->makeAuditWriter());
+        $this->app->singleton(OpsSettingsAuditConfiguredCheck::class);
         $this->app->singleton(OpsSettingsStoreSetup::class);
+        $this->app->singleton(OpsSettingsStoreReadyCheck::class);
 
         $this->app->singleton(OpsSettingsManager::class, function (): OpsSettingsManager {
             return new OpsSettingsManager(
@@ -58,5 +71,30 @@ class OpsSettingsServiceProvider extends PackageServiceProvider
     public function packageBooted(): void
     {
         $this->app->make(PlatformPackageRegistrar::class)->register(new OpsSettingsPlatformPackage);
+        $this->registerAuditListeners($this->app->make(Dispatcher::class));
+    }
+
+    private function registerAuditListeners(Dispatcher $events): void
+    {
+        $events->listen(OpsSettingsUpdated::class, [OpsSettingsAuditListener::class, 'handleSettingsUpdated']);
+    }
+
+    private function makeAuditWriter(): OpsSettingsAuditWriter
+    {
+        $driver = config('ops-settings.audit.driver');
+
+        if ($driver === null) {
+            return new NullOpsSettingsAuditWriter;
+        }
+
+        if ($driver !== 'activitylog') {
+            throw new InvalidArgumentException(sprintf('Unsupported ops settings audit driver [%s].', $driver));
+        }
+
+        if (! class_exists('Spatie\\Activitylog\\ActivitylogServiceProvider') || ! class_exists(ActivityLogger::class)) {
+            throw new InvalidArgumentException('Ops settings audit driver [activitylog] requires spatie/laravel-activitylog.');
+        }
+
+        return new ActivityLogOpsSettingsAuditWriter($this->app->make(ActivityLogger::class));
     }
 }

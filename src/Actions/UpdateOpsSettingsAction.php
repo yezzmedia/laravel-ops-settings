@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace YezzMedia\OpsSettings\Actions;
 
 use InvalidArgumentException;
+use Spatie\LaravelSettings\Settings;
 use YezzMedia\OpsSettings\Events\OpsSettingsUpdated;
 use YezzMedia\OpsSettings\Support\OpsSettingsGroup;
 use YezzMedia\OpsSettings\Support\OpsSettingsManager;
@@ -43,13 +44,22 @@ final class UpdateOpsSettingsAction
             }
         }
 
+        /** @var Settings $settings */
         $settings = app($group->settingsClass());
+        $oldValues = [];
 
         foreach ($attributes as $key => $value) {
+            $oldValues[$key] = $settings->{$key};
             $settings->{$key} = $value;
         }
 
         $settings->save();
+
+        $newValues = [];
+
+        foreach (array_keys($attributes) as $key) {
+            $newValues[$key] = $settings->{$key};
+        }
 
         $this->manager->invalidate($group);
 
@@ -57,6 +67,8 @@ final class UpdateOpsSettingsAction
             group: $group,
             changedKeys: array_keys($attributes),
             actorId: $actorId,
+            oldValues: $oldValues,
+            newValues: $newValues,
             context: $context,
             source: $source,
         ));
