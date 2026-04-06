@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Spatie\LaravelSettings\Settings;
 use YezzMedia\OpsSettings\Settings\OperatorIdentitySettings;
 use YezzMedia\OpsSettings\Settings\PlatformBrandSettings;
 use YezzMedia\OpsSettings\Settings\PlatformContactSettings;
@@ -87,4 +88,46 @@ it('invalidates all group caches at once', function (): void {
     foreach (OpsSettingsGroup::cases() as $group) {
         expect(Cache::has($group->cacheKey()))->toBeFalse();
     }
+});
+
+it('hydrates typed settings instances from cached arrays', function (): void {
+    config()->set('ops-settings.cache.enabled', true);
+    app()->forgetInstance(OpsSettingsManager::class);
+
+    Cache::put(OpsSettingsGroup::Identity->cacheKey(), [
+        'name' => 'Cached Operator',
+        'platform_label' => 'Cached Label',
+    ]);
+
+    $settings = app(OpsSettingsManager::class)->identity();
+
+    expect($settings)->toBeInstanceOf(OperatorIdentitySettings::class)
+        ->and($settings->name)->toBe('Cached Operator')
+        ->and($settings->platform_label)->toBe('Cached Label');
+});
+
+it('replaces invalid cached payloads with fresh typed settings data', function (): void {
+    config()->set('ops-settings.cache.enabled', true);
+    app()->forgetInstance(OpsSettingsManager::class);
+
+    Cache::put(OpsSettingsGroup::Identity->cacheKey(), new class extends Settings
+    {
+        public string $name = 'Broken';
+
+        public ?string $platform_label = null;
+
+        public static function group(): string
+        {
+            return 'identity';
+        }
+    });
+
+    $settings = app(OpsSettingsManager::class)->identity();
+
+    expect($settings)->toBeInstanceOf(OperatorIdentitySettings::class)
+        ->and($settings->name)->toBe('Test Operator')
+        ->and(Cache::get(OpsSettingsGroup::Identity->cacheKey()))->toBe([
+            'name' => 'Test Operator',
+            'platform_label' => null,
+        ]);
 });
