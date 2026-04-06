@@ -68,6 +68,75 @@ class OpsSettingsManager
     }
 
     /**
+     * Stable alias for obtaining all grouped settings at once.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public function all(): array
+    {
+        return $this->snapshot();
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public function snapshot(): array
+    {
+        $snapshot = [];
+
+        foreach (OpsSettingsGroup::cases() as $group) {
+            $snapshot[$group->value] = $this->settingsForGroup($group)->toArray();
+        }
+
+        return $snapshot;
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public function publicPayload(): array
+    {
+        $payload = [];
+
+        foreach (OpsSettingsGroup::cases() as $group) {
+            $settings = $this->settingsForGroup($group)->toArray();
+            $payload[$group->value] = array_intersect_key(
+                $settings,
+                array_flip($group->publicProperties()),
+            );
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @return array<string, array<int, string>>
+     */
+    public function missingRequiredFields(): array
+    {
+        $missing = [];
+
+        foreach (OpsSettingsGroup::cases() as $group) {
+            $settings = $this->settingsForGroup($group)->toArray();
+            $missingFields = array_values(array_filter(
+                $group->requiredProperties(),
+                static fn (string $property): bool => blank($settings[$property] ?? null),
+            ));
+
+            if ($missingFields !== []) {
+                $missing[$group->value] = $missingFields;
+            }
+        }
+
+        return $missing;
+    }
+
+    public function isComplete(): bool
+    {
+        return $this->missingRequiredFields() === [];
+    }
+
+    /**
      * Invalidates the package-owned cache for a specific settings group.
      * Called by UpdateOpsSettingsAction after a successful mutation.
      */
@@ -119,6 +188,18 @@ class OpsSettingsManager
         $this->memo[$group->value] = $settings;
 
         return $settings;
+    }
+
+    private function settingsForGroup(OpsSettingsGroup $group): Settings
+    {
+        return match ($group) {
+            OpsSettingsGroup::Identity => $this->identity(),
+            OpsSettingsGroup::Contact => $this->contact(),
+            OpsSettingsGroup::Brand => $this->brand(),
+            OpsSettingsGroup::Social => $this->social(),
+            OpsSettingsGroup::Legal => $this->legal(),
+            OpsSettingsGroup::WebsiteDefaults => $this->websiteDefaults(),
+        };
     }
 
     /**

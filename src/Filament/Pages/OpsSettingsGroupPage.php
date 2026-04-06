@@ -51,6 +51,11 @@ abstract class OpsSettingsGroupPage extends Page
         return Gate::check('ops.settings.manage');
     }
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     public function mount(): void
     {
         if (! static::canAccess()) {

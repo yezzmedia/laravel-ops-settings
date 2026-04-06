@@ -59,7 +59,7 @@ it('OpsSettingsGroupPage checks ops.settings.manage gate for access', function (
     expect(IdentitySettingsPage::canAccess())->toBeTrue();
 });
 
-it('settings child pages register under the Settings parent navigation item', function (): void {
+it('settings child pages keep the Settings navigation group for deep links', function (): void {
     $pages = [
         IdentitySettingsPage::class,
         ContactSettingsPage::class,
@@ -75,8 +75,14 @@ it('settings child pages register under the Settings parent navigation item', fu
     }
 });
 
-it('the Settings hub page stays out of the sidebar while group pages form the Settings section', function (): void {
-    expect(OpsSettingsPage::shouldRegisterNavigation())->toBeFalse()
+it('the central settings workspace is in the sidebar while legacy group pages stay hidden', function (): void {
+    expect(OpsSettingsPage::shouldRegisterNavigation())->toBeTrue()
+        ->and(IdentitySettingsPage::shouldRegisterNavigation())->toBeFalse()
+        ->and(ContactSettingsPage::shouldRegisterNavigation())->toBeFalse()
+        ->and(BrandSettingsPage::shouldRegisterNavigation())->toBeFalse()
+        ->and(SocialSettingsPage::shouldRegisterNavigation())->toBeFalse()
+        ->and(LegalSettingsPage::shouldRegisterNavigation())->toBeFalse()
+        ->and(WebsiteDefaultsSettingsPage::shouldRegisterNavigation())->toBeFalse()
         ->and(IdentitySettingsPage::getNavigationGroup())->toBe('Settings')
         ->and(ContactSettingsPage::getNavigationGroup())->toBe('Settings')
         ->and(BrandSettingsPage::getNavigationGroup())->toBe('Settings')
