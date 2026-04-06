@@ -18,10 +18,12 @@ use YezzMedia\OpsSettings\Actions\UpdateOpsSettingsAction;
 use YezzMedia\OpsSettings\Contracts\OpsSettingsAuditWriter;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsAuditConfiguredCheck;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsStoreReadyCheck;
+use YezzMedia\OpsSettings\Install\ConfigureOpsSettingsAuditInstallStep;
 use YezzMedia\OpsSettings\Install\EnsureOpsSettingsStoreReadyInstallStep;
 use YezzMedia\OpsSettings\Install\PublishOpsSettingsMigrationsInstallStep;
 use YezzMedia\OpsSettings\Install\SeedOpsSettingsDefaultsInstallStep;
 use YezzMedia\OpsSettings\OpsSettingsPlatformPackage;
+use YezzMedia\OpsSettings\OpsSettingsServiceProvider;
 use YezzMedia\OpsSettings\Support\NullOpsSettingsAuditWriter;
 use YezzMedia\OpsSettings\Support\OpsSettingsManager;
 
@@ -52,6 +54,19 @@ it('merges the package configuration', function (): void {
         ->and(config('ops-settings.defaults.seed_on_install'))->toBeTrue();
 });
 
+it('registers a publishable ops settings config file', function (): void {
+    $publishableConfigs = OpsSettingsServiceProvider::pathsToPublish(
+        OpsSettingsServiceProvider::class,
+        'ops-settings-config',
+    );
+
+    expect($publishableConfigs)->toHaveCount(1)
+        ->and(array_keys($publishableConfigs)[0])->toEndWith('/config/ops-settings.php')
+        ->and(array_values($publishableConfigs))->toBe([
+            config_path('ops-settings.php'),
+        ]);
+});
+
 it('describes the approved bootstrap surface', function (): void {
     $package = new OpsSettingsPlatformPackage;
     $metadata = $package->metadata();
@@ -79,10 +94,11 @@ it('describes the approved bootstrap surface', function (): void {
             'settings.legal',
             'settings.website_defaults',
         ])
-        ->and($package->installSteps())->toHaveCount(3)
+        ->and($package->installSteps())->toHaveCount(4)
         ->and($package->installSteps()[0])->toBeInstanceOf(PublishOpsSettingsMigrationsInstallStep::class)
-        ->and($package->installSteps()[1])->toBeInstanceOf(EnsureOpsSettingsStoreReadyInstallStep::class)
-        ->and($package->installSteps()[2])->toBeInstanceOf(SeedOpsSettingsDefaultsInstallStep::class)
+        ->and($package->installSteps()[1])->toBeInstanceOf(ConfigureOpsSettingsAuditInstallStep::class)
+        ->and($package->installSteps()[2])->toBeInstanceOf(EnsureOpsSettingsStoreReadyInstallStep::class)
+        ->and($package->installSteps()[3])->toBeInstanceOf(SeedOpsSettingsDefaultsInstallStep::class)
         ->and($package->doctorChecks())->toHaveCount(2)
         ->and($package->doctorChecks()[0])->toBeInstanceOf(OpsSettingsAuditConfiguredCheck::class)
         ->and($package->doctorChecks()[1])->toBeInstanceOf(OpsSettingsStoreReadyCheck::class)

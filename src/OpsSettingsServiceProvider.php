@@ -16,6 +16,7 @@ use YezzMedia\OpsSettings\Contracts\OpsSettingsAuditWriter;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsAuditConfiguredCheck;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsStoreReadyCheck;
 use YezzMedia\OpsSettings\Events\OpsSettingsUpdated;
+use YezzMedia\OpsSettings\Install\ConfigureOpsSettingsAuditInstallStep;
 use YezzMedia\OpsSettings\Listeners\OpsSettingsAuditListener;
 use YezzMedia\OpsSettings\Support\ActivityLogOpsSettingsAuditWriter;
 use YezzMedia\OpsSettings\Support\NullOpsSettingsAuditWriter;
@@ -35,7 +36,7 @@ class OpsSettingsServiceProvider extends PackageServiceProvider
     {
         $package
             ->name('laravel-ops-settings')
-            ->hasConfigFile()
+            ->hasConfigFile('ops-settings')
             ->hasMigrations([
                 '0001_add_operator_identity_settings',
                 '0002_add_platform_contact_settings',
@@ -50,6 +51,7 @@ class OpsSettingsServiceProvider extends PackageServiceProvider
     {
         $this->app->singleton(OpsSettingsAuditWriter::class, fn (): OpsSettingsAuditWriter => $this->makeAuditWriter());
         $this->app->singleton(OpsSettingsAuditConfiguredCheck::class);
+        $this->app->singleton(ConfigureOpsSettingsAuditInstallStep::class);
         $this->app->singleton(OpsSettingsStoreSetup::class);
         $this->app->singleton(OpsSettingsStoreReadyCheck::class);
 

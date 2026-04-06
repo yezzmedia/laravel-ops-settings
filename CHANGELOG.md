@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `NullOpsSettingsAuditWriter`
   - `ActivityLogOpsSettingsAuditWriter`
 - `OpsSettingsAuditListener` for bridging `OpsSettingsUpdated` into the configured audit writer
+- `ConfigureOpsSettingsAuditInstallStep` for enabling persisted ops-settings audit through the foundation installer
 - doctor diagnostics:
   - `OpsSettingsAuditConfiguredCheck`
   - `OpsSettingsStoreReadyCheck`
@@ -23,10 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `OpsSettingsUpdated` now carries `oldValues` and `newValues` snapshots for changed keys
 - the package audit event definition now includes `old_values` and `new_values` context keys for persisted audit backends
+- package config publishing now registers `config/ops-settings.php` under the explicit `ops-settings-config` publish tag
 
 ### Documentation
 
-- documented the optional audit configuration, doctor checks, expanded event payload, and the planned generic `website:install --configure-audit --audit-package=*` flow in the package README
+- documented the optional audit configuration, doctor checks, expanded event payload, and the implemented `website:install --configure-audit --audit-package=*` flow in the package README
+- corrected the manual config publishing examples to use the real `ops-settings-config` tag
 
 ## [0.1.0] - 2026-04-05
 

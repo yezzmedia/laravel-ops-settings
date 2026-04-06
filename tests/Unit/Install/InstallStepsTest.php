@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Tests\Fixtures\FakeOpsSettingsStoreSetup;
 use YezzMedia\Foundation\Data\InstallContext;
+use YezzMedia\OpsSettings\Install\ConfigureOpsSettingsAuditInstallStep;
 use YezzMedia\OpsSettings\Install\EnsureOpsSettingsStoreReadyInstallStep;
 use YezzMedia\OpsSettings\Install\PublishOpsSettingsMigrationsInstallStep;
 use YezzMedia\OpsSettings\Install\SeedOpsSettingsDefaultsInstallStep;
@@ -90,4 +91,18 @@ it('skips seeding when store is not ready', function (): void {
     config()->set('ops-settings.defaults.seed_on_install', true);
 
     expect($step->shouldRun(new InstallContext))->toBeFalse();
+});
+
+it('configures ops settings audit persistence only for selected audit runs', function (): void {
+    $setup = new FakeOpsSettingsStoreSetup;
+    $step = new ConfigureOpsSettingsAuditInstallStep($setup);
+
+    expect($step->shouldRun(new InstallContext))->toBeFalse()
+        ->and($step->shouldRun(new InstallContext(configureAudit: true, auditPackages: ['yezzmedia/laravel-ops-settings'])))->toBeTrue();
+
+    $step->handle(new InstallContext(configureAudit: true, auditPackages: ['yezzmedia/laravel-ops-settings']));
+
+    expect($setup->calls)->toBe(['publish_config', 'configure_audit_driver'])
+        ->and($setup->auditDriver)->toBe('activitylog')
+        ->and($setup->auditDriverConfigured)->toBeTrue();
 });
