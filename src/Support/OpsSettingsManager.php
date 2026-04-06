@@ -6,6 +6,8 @@ namespace YezzMedia\OpsSettings\Support;
 
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use InvalidArgumentException;
+use Spatie\LaravelSettings\Settings;
 use YezzMedia\OpsSettings\Settings\OperatorIdentitySettings;
 use YezzMedia\OpsSettings\Settings\PlatformBrandSettings;
 use YezzMedia\OpsSettings\Settings\PlatformContactSettings;
@@ -37,38 +39,32 @@ class OpsSettingsManager
 
     public function identity(): OperatorIdentitySettings
     {
-        /** @var OperatorIdentitySettings */
-        return $this->resolve(OpsSettingsGroup::Identity);
+        return $this->resolve(OpsSettingsGroup::Identity, OperatorIdentitySettings::class);
     }
 
     public function contact(): PlatformContactSettings
     {
-        /** @var PlatformContactSettings */
-        return $this->resolve(OpsSettingsGroup::Contact);
+        return $this->resolve(OpsSettingsGroup::Contact, PlatformContactSettings::class);
     }
 
     public function brand(): PlatformBrandSettings
     {
-        /** @var PlatformBrandSettings */
-        return $this->resolve(OpsSettingsGroup::Brand);
+        return $this->resolve(OpsSettingsGroup::Brand, PlatformBrandSettings::class);
     }
 
     public function social(): PlatformSocialSettings
     {
-        /** @var PlatformSocialSettings */
-        return $this->resolve(OpsSettingsGroup::Social);
+        return $this->resolve(OpsSettingsGroup::Social, PlatformSocialSettings::class);
     }
 
     public function legal(): PlatformLegalSettings
     {
-        /** @var PlatformLegalSettings */
-        return $this->resolve(OpsSettingsGroup::Legal);
+        return $this->resolve(OpsSettingsGroup::Legal, PlatformLegalSettings::class);
     }
 
     public function websiteDefaults(): PlatformWebsiteDefaultsSettings
     {
-        /** @var PlatformWebsiteDefaultsSettings */
-        return $this->resolve(OpsSettingsGroup::WebsiteDefaults);
+        return $this->resolve(OpsSettingsGroup::WebsiteDefaults, PlatformWebsiteDefaultsSettings::class);
     }
 
     /**
@@ -92,28 +88,51 @@ class OpsSettingsManager
     }
 
     /**
-     * Resolves a settings instance for the given group with cache-forever strategy.
+     * @template TSettings of Settings
+     *
+     * @param  class-string<TSettings>  $settingsClass
+     * @return TSettings
      */
-    private function resolve(OpsSettingsGroup $group): mixed
+    private function resolve(OpsSettingsGroup $group, string $settingsClass): Settings
     {
         if (isset($this->memo[$group->value])) {
-            return $this->memo[$group->value];
+            return $this->ensureSettingsType($this->memo[$group->value], $settingsClass);
         }
 
+        $settings = app($settingsClass);
+
         if (! $this->cacheEnabled) {
-            $settings = app($group->settingsClass());
             $this->memo[$group->value] = $settings;
 
             return $settings;
         }
 
-        $settings = $this->cacheRepository->rememberForever(
-            $group->cacheKey(),
-            fn () => app($group->settingsClass()),
-        );
+        $cachedPayload = $this->cacheRepository->get($group->cacheKey());
+
+        if (is_array($cachedPayload)) {
+            $settings->fill($cachedPayload);
+            $settings = $this->ensureSettingsType($settings, $settingsClass);
+        } else {
+            $this->cacheRepository->forever($group->cacheKey(), $settings->toArray());
+        }
 
         $this->memo[$group->value] = $settings;
 
         return $settings;
+    }
+
+    /**
+     * @template TSettings of Settings
+     *
+     * @param  class-string<TSettings>  $settingsClass
+     * @return TSettings
+     */
+    private function ensureSettingsType(mixed $settings, string $settingsClass): Settings
+    {
+        if ($settings instanceof $settingsClass) {
+            return $settings;
+        }
+
+        throw new InvalidArgumentException("Resolved settings must be an instance of [{$settingsClass}].");
     }
 }

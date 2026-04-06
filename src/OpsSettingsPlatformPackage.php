@@ -9,7 +9,9 @@ use YezzMedia\Foundation\Contracts\DefinesInstallSteps;
 use YezzMedia\Foundation\Contracts\DefinesPermissions;
 use YezzMedia\Foundation\Contracts\PlatformPackage;
 use YezzMedia\Foundation\Contracts\ProvidesOpsModules;
+use YezzMedia\Foundation\Contracts\RegistersFeatures;
 use YezzMedia\Foundation\Data\AuditEventDefinition;
+use YezzMedia\Foundation\Data\FeatureDefinition;
 use YezzMedia\Foundation\Data\OpsModuleDefinition;
 use YezzMedia\Foundation\Data\PackageMetadata;
 use YezzMedia\Foundation\Data\PermissionDefinition;
@@ -21,7 +23,7 @@ use YezzMedia\OpsSettings\Install\SeedOpsSettingsDefaultsInstallStep;
 /**
  * Describes the ops-settings package surface that foundation should register.
  */
-final class OpsSettingsPlatformPackage implements DefinesAuditEvents, DefinesInstallSteps, DefinesPermissions, PlatformPackage, ProvidesOpsModules
+final class OpsSettingsPlatformPackage implements DefinesAuditEvents, DefinesInstallSteps, DefinesPermissions, PlatformPackage, ProvidesOpsModules, RegistersFeatures
 {
     public function metadata(): PackageMetadata
     {
@@ -50,6 +52,51 @@ final class OpsSettingsPlatformPackage implements DefinesAuditEvents, DefinesIns
                 package: 'yezzmedia/laravel-ops-settings',
                 label: 'Manage ops settings',
                 description: 'Allows mutating operator-managed global platform settings.',
+            ),
+        ];
+    }
+
+    /**
+     * @return array<int, FeatureDefinition>
+     */
+    public function featureDefinitions(): array
+    {
+        return [
+            new FeatureDefinition(
+                'settings.identity',
+                'yezzmedia/laravel-ops-settings',
+                'Identity settings',
+                'Manages operator-facing identity labels and platform naming defaults.',
+            ),
+            new FeatureDefinition(
+                'settings.contact',
+                'yezzmedia/laravel-ops-settings',
+                'Contact settings',
+                'Manages support contact details and postal address defaults for the platform.',
+            ),
+            new FeatureDefinition(
+                'settings.brand',
+                'yezzmedia/laravel-ops-settings',
+                'Brand settings',
+                'Manages shared brand copy, palette defaults, and reusable visual references.',
+            ),
+            new FeatureDefinition(
+                'settings.social',
+                'yezzmedia/laravel-ops-settings',
+                'Social settings',
+                'Manages linked public social profiles and channel defaults.',
+            ),
+            new FeatureDefinition(
+                'settings.legal',
+                'yezzmedia/laravel-ops-settings',
+                'Legal settings',
+                'Manages legal entity details, registrations, and legal notice content.',
+            ),
+            new FeatureDefinition(
+                'settings.website_defaults',
+                'yezzmedia/laravel-ops-settings',
+                'Website defaults',
+                'Manages reusable site-wide title, footer, and support-label defaults.',
             ),
         ];
     }
@@ -89,6 +136,13 @@ final class OpsSettingsPlatformPackage implements DefinesAuditEvents, DefinesIns
      */
     public function opsModuleDefinitions(): array
     {
-        return [];
+        return [
+            new OpsModuleDefinition('content.settings.identity', 'yezzmedia/laravel-ops-settings', 'Identity', 'page', 'ops.settings.view'),
+            new OpsModuleDefinition('content.settings.contact', 'yezzmedia/laravel-ops-settings', 'Contact', 'page', 'ops.settings.view'),
+            new OpsModuleDefinition('content.settings.brand', 'yezzmedia/laravel-ops-settings', 'Brand', 'page', 'ops.settings.view'),
+            new OpsModuleDefinition('content.settings.social', 'yezzmedia/laravel-ops-settings', 'Social', 'page', 'ops.settings.view'),
+            new OpsModuleDefinition('content.settings.legal', 'yezzmedia/laravel-ops-settings', 'Legal', 'page', 'ops.settings.view'),
+            new OpsModuleDefinition('content.settings.website_defaults', 'yezzmedia/laravel-ops-settings', 'Website Defaults', 'page', 'ops.settings.view'),
+        ];
     }
 }

@@ -7,6 +7,8 @@ use YezzMedia\Foundation\Contracts\DefinesInstallSteps;
 use YezzMedia\Foundation\Contracts\DefinesPermissions;
 use YezzMedia\Foundation\Contracts\PlatformPackage;
 use YezzMedia\Foundation\Contracts\ProvidesOpsModules;
+use YezzMedia\Foundation\Contracts\RegistersFeatures;
+use YezzMedia\Foundation\Registry\FeatureRegistry;
 use YezzMedia\Foundation\Registry\OpsModuleRegistry;
 use YezzMedia\Foundation\Registry\PackageRegistry;
 use YezzMedia\Foundation\Registry\PermissionRegistry;
@@ -25,8 +27,10 @@ it('registers the ops-settings bootstrap bindings', function (): void {
             collect(app(PermissionRegistry::class)->forPackage('yezzmedia/laravel-ops-settings'))
                 ->pluck('name')->all()
         )->toBe(['ops.settings.view', 'ops.settings.manage'])
+        ->and(app(FeatureRegistry::class)->forPackage('yezzmedia/laravel-ops-settings'))
+        ->toHaveCount(6)
         ->and(app(OpsModuleRegistry::class)->forPackage('yezzmedia/laravel-ops-settings'))
-        ->toHaveCount(0)
+        ->toHaveCount(6)
         ->and(app(OpsSettingsManager::class))->toBeInstanceOf(OpsSettingsManager::class)
         ->and(app(UpdateOpsSettingsAction::class))->toBeInstanceOf(UpdateOpsSettingsAction::class);
 });
@@ -41,6 +45,8 @@ it('describes the approved bootstrap surface', function (): void {
     $package = new OpsSettingsPlatformPackage;
     $metadata = $package->metadata();
     $permissions = collect($package->permissionDefinitions())->keyBy('name');
+    $features = collect($package->featureDefinitions())->keyBy('name');
+    $opsModules = collect($package->opsModuleDefinitions())->keyBy('key');
     $auditEvents = collect($package->auditEventDefinitions())->keyBy('key');
 
     expect($package)->toBeInstanceOf(PlatformPackage::class)
@@ -48,15 +54,32 @@ it('describes the approved bootstrap surface', function (): void {
         ->and($package)->toBeInstanceOf(DefinesAuditEvents::class)
         ->and($package)->toBeInstanceOf(DefinesInstallSteps::class)
         ->and($package)->toBeInstanceOf(ProvidesOpsModules::class)
+        ->and($package)->toBeInstanceOf(RegistersFeatures::class)
         ->and($metadata->name)->toBe('yezzmedia/laravel-ops-settings')
         ->and($metadata->vendor)->toBe('yezzmedia')
         ->and($metadata->packageClass)->toBe(OpsSettingsPlatformPackage::class)
         ->and($permissions->keys()->all())->toBe(['ops.settings.view', 'ops.settings.manage'])
+        ->and($features->keys()->all())->toBe([
+            'settings.identity',
+            'settings.contact',
+            'settings.brand',
+            'settings.social',
+            'settings.legal',
+            'settings.website_defaults',
+        ])
         ->and($package->installSteps())->toHaveCount(3)
         ->and($package->installSteps()[0])->toBeInstanceOf(PublishOpsSettingsMigrationsInstallStep::class)
         ->and($package->installSteps()[1])->toBeInstanceOf(EnsureOpsSettingsStoreReadyInstallStep::class)
         ->and($package->installSteps()[2])->toBeInstanceOf(SeedOpsSettingsDefaultsInstallStep::class)
-        ->and($package->opsModuleDefinitions())->toBe([])
+        ->and($opsModules->keys()->all())->toBe([
+            'content.settings.identity',
+            'content.settings.contact',
+            'content.settings.brand',
+            'content.settings.social',
+            'content.settings.legal',
+            'content.settings.website_defaults',
+        ])
+        ->and($opsModules->pluck('permissionHint')->unique()->values()->all())->toBe(['ops.settings.view'])
         ->and($auditEvents->keys()->all())->toBe(['ops.settings.updated'])
         ->and($auditEvents->get('ops.settings.updated')?->action)->toBe('updated')
         ->and($auditEvents->get('ops.settings.updated')?->subjectType)->toBe('ops_settings')
