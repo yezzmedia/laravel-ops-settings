@@ -18,6 +18,7 @@ use YezzMedia\OpsSettings\Actions\UpdateOpsSettingsAction;
 use YezzMedia\OpsSettings\Contracts\OpsSettingsAuditWriter;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsAuditConfiguredCheck;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsStoreReadyCheck;
+use YezzMedia\OpsSettings\Install\ConfigureOpsSettingsAuditInstallStep;
 use YezzMedia\OpsSettings\Install\EnsureOpsSettingsStoreReadyInstallStep;
 use YezzMedia\OpsSettings\Install\PublishOpsSettingsMigrationsInstallStep;
 use YezzMedia\OpsSettings\Install\SeedOpsSettingsDefaultsInstallStep;
@@ -79,10 +80,11 @@ it('describes the approved bootstrap surface', function (): void {
             'settings.legal',
             'settings.website_defaults',
         ])
-        ->and($package->installSteps())->toHaveCount(3)
+        ->and($package->installSteps())->toHaveCount(4)
         ->and($package->installSteps()[0])->toBeInstanceOf(PublishOpsSettingsMigrationsInstallStep::class)
-        ->and($package->installSteps()[1])->toBeInstanceOf(EnsureOpsSettingsStoreReadyInstallStep::class)
-        ->and($package->installSteps()[2])->toBeInstanceOf(SeedOpsSettingsDefaultsInstallStep::class)
+        ->and($package->installSteps()[1])->toBeInstanceOf(ConfigureOpsSettingsAuditInstallStep::class)
+        ->and($package->installSteps()[2])->toBeInstanceOf(EnsureOpsSettingsStoreReadyInstallStep::class)
+        ->and($package->installSteps()[3])->toBeInstanceOf(SeedOpsSettingsDefaultsInstallStep::class)
         ->and($package->doctorChecks())->toHaveCount(2)
         ->and($package->doctorChecks()[0])->toBeInstanceOf(OpsSettingsAuditConfiguredCheck::class)
         ->and($package->doctorChecks()[1])->toBeInstanceOf(OpsSettingsStoreReadyCheck::class)

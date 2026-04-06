@@ -50,7 +50,7 @@ php artisan db:seed --class="YezzMedia\OpsSettings\Database\Seeders\OpsSettingsD
 
 Persisted ops-settings audit is optional.
 
-Current manual setup:
+Manual setup:
 
 ```bash
 composer require spatie/laravel-activitylog
@@ -59,7 +59,7 @@ php artisan vendor:publish --tag=laravel-ops-settings-config
 
 Then set `ops-settings.audit.driver` to `activitylog`.
 
-Planned central install flow:
+Central install flow:
 
 ```bash
 php artisan website:install --configure-audit --audit-package=yezzmedia/laravel-ops-settings
@@ -229,6 +229,8 @@ Audit writer behavior:
 
 If `activitylog` is configured but `spatie/laravel-activitylog` is missing, the package fails explicitly during binding.
 
+The foundation audit installer updates package config only. It does not run the ordinary ops-settings install flow, migrations, or default seeding.
+
 ## Doctor checks
 
 The package registers two doctor checks through foundation:
@@ -250,7 +252,7 @@ The package registers two doctor checks through foundation:
 
 Permissions are registered via `OpsSettingsPlatformPackage` and synchronized by `yezzmedia/laravel-access`.
 
-The planned generic foundation audit installer will let operators opt this package into persisted audit through `website:install --configure-audit --audit-package=yezzmedia/laravel-ops-settings`.
+Operators can opt this package into persisted audit through `website:install --configure-audit --audit-package=yezzmedia/laravel-ops-settings`.
 
 ## Testing
 

@@ -6,7 +6,9 @@ namespace YezzMedia\OpsSettings\Support;
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
+use RuntimeException;
 use YezzMedia\OpsSettings\OpsSettingsServiceProvider;
 
 /**
@@ -95,6 +97,49 @@ class OpsSettingsStoreSetup
         }
 
         Artisan::call('vendor:publish', $options);
+    }
+
+    public function configPublished(): bool
+    {
+        return File::exists(config_path('ops-settings.php'));
+    }
+
+    public function publishConfig(bool $force = false): void
+    {
+        $options = [
+            '--provider' => OpsSettingsServiceProvider::class,
+            '--tag' => ['laravel-ops-settings-config'],
+        ];
+
+        if ($force) {
+            $options['--force'] = true;
+        }
+
+        Artisan::call('vendor:publish', $options);
+    }
+
+    public function configureAuditDriver(string $driver): void
+    {
+        if (! $this->configPublished()) {
+            $this->publishConfig();
+        }
+
+        $path = config_path('ops-settings.php');
+        $contents = File::get($path);
+
+        $updated = preg_replace_callback(
+            "/('driver'\\s*=>\\s*)(null|'[^']*')/",
+            static fn (array $matches): string => $matches[1]."'{$driver}'",
+            $contents,
+            1,
+        );
+
+        if (! is_string($updated) || $updated === $contents) {
+            throw new RuntimeException('The ops settings config could not be updated to enable audit persistence.');
+        }
+
+        File::put($path, $updated);
+        config()->set('ops-settings.audit.driver', $driver);
     }
 
     /**

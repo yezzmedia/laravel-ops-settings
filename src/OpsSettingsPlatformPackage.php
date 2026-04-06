@@ -20,6 +20,7 @@ use YezzMedia\Foundation\Doctor\DoctorCheck;
 use YezzMedia\Foundation\Install\InstallStep;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsAuditConfiguredCheck;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsStoreReadyCheck;
+use YezzMedia\OpsSettings\Install\ConfigureOpsSettingsAuditInstallStep;
 use YezzMedia\OpsSettings\Install\EnsureOpsSettingsStoreReadyInstallStep;
 use YezzMedia\OpsSettings\Install\PublishOpsSettingsMigrationsInstallStep;
 use YezzMedia\OpsSettings\Install\SeedOpsSettingsDefaultsInstallStep;
@@ -130,6 +131,7 @@ final class OpsSettingsPlatformPackage implements DefinesAuditEvents, DefinesIns
     {
         return [
             app(PublishOpsSettingsMigrationsInstallStep::class),
+            app(ConfigureOpsSettingsAuditInstallStep::class),
             app(EnsureOpsSettingsStoreReadyInstallStep::class),
             app(SeedOpsSettingsDefaultsInstallStep::class),
         ];

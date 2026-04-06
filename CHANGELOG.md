@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `NullOpsSettingsAuditWriter`
   - `ActivityLogOpsSettingsAuditWriter`
 - `OpsSettingsAuditListener` for bridging `OpsSettingsUpdated` into the configured audit writer
+- `ConfigureOpsSettingsAuditInstallStep` for enabling persisted ops-settings audit through the foundation installer
 - doctor diagnostics:
   - `OpsSettingsAuditConfiguredCheck`
   - `OpsSettingsStoreReadyCheck`
@@ -26,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
-- documented the optional audit configuration, doctor checks, expanded event payload, and the planned generic `website:install --configure-audit --audit-package=*` flow in the package README
+- documented the optional audit configuration, doctor checks, expanded event payload, and the implemented `website:install --configure-audit --audit-package=*` flow in the package README
 
 ## [0.1.0] - 2026-04-05
 

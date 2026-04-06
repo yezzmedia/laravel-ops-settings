@@ -17,6 +17,14 @@ class FakeOpsSettingsStoreSetup extends OpsSettingsStoreSetup
 
     public bool $migrationsWereForced = false;
 
+    public bool $configWasForced = false;
+
+    public bool $hasConfigPublished = false;
+
+    public ?string $auditDriver = null;
+
+    public bool $auditDriverConfigured = false;
+
     public function __construct(
         public bool $hasMigrationsPublished = false,
         public bool $hasReadyStore = false,
@@ -34,6 +42,29 @@ class FakeOpsSettingsStoreSetup extends OpsSettingsStoreSetup
         $this->calls[] = 'publish_migrations';
         $this->hasMigrationsPublished = true;
         $this->migrationsWereForced = $force;
+    }
+
+    public function configPublished(): bool
+    {
+        return $this->hasConfigPublished;
+    }
+
+    public function publishConfig(bool $force = false): void
+    {
+        $this->calls[] = 'publish_config';
+        $this->hasConfigPublished = true;
+        $this->configWasForced = $force;
+    }
+
+    public function configureAuditDriver(string $driver): void
+    {
+        if (! $this->configPublished()) {
+            $this->publishConfig();
+        }
+
+        $this->calls[] = 'configure_audit_driver';
+        $this->auditDriver = $driver;
+        $this->auditDriverConfigured = true;
     }
 
     public function storeReady(): bool
