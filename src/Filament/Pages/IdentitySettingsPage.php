@@ -29,16 +29,40 @@ class IdentitySettingsPage extends OpsSettingsGroupPage
     {
         return [
             Section::make('Operator Identity')
+                ->description('Define the core operator name and optional platform label that other packages should treat as the canonical naming source.')
                 ->schema([
                     TextInput::make('name')
                         ->label('Operator Name')
+                        ->placeholder('Yezz Media')
+                        ->helperText('Use the stable public-facing operator or company name that should appear across shared platform surfaces.')
                         ->required()
                         ->maxLength(255),
                     TextInput::make('platform_label')
                         ->label('Platform Label')
+                        ->placeholder('Operations Cloud')
+                        ->helperText('Optional sub-brand or environment label for cases where the operator name needs a second clarifying layer.')
                         ->maxLength(255),
                 ]),
         ];
+    }
+
+    protected function getPageIntro(): string
+    {
+        return 'Identity settings establish the naming baseline for the wider platform. Downstream packages should be able to reuse these values without reinterpreting what the operator is called.';
+    }
+
+    protected function getPageHighlights(): array
+    {
+        return [
+            'operator naming shown in shared admin and ops experiences',
+            'platform labels used when the main brand needs clarification',
+            'stable values that other teams can reference consistently',
+        ];
+    }
+
+    protected function getPageExample(): string
+    {
+        return 'Example: use `Yezz Media` as the operator name and `Platform Operations` as the platform label when you want one formal owner plus one clarifying operational label.';
     }
 
     protected function loadCurrentData(): array
