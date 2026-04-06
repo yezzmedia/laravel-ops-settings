@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace YezzMedia\OpsSettings\Support;
 
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Symfony\Component\Intl\Currencies;
+use Symfony\Component\Intl\Locales;
 
 final class OpsSettingsPageSchema
 {
@@ -477,26 +480,30 @@ final class OpsSettingsPageSchema
                 ->schema([
                     Grid::make(2)
                         ->schema([
-                            TextInput::make('default_locale')
+                            Select::make('default_locale')
                                 ->label('Default Locale')
-                                ->placeholder('de')
+                                ->placeholder('Select a default locale')
                                 ->helperText('Primary application or website locale code used as a fallback.')
-                                ->maxLength(10),
-                            TextInput::make('fallback_locale')
+                                ->searchable()
+                                ->options(self::localeOptions()),
+                            Select::make('fallback_locale')
                                 ->label('Fallback Locale')
-                                ->placeholder('en')
+                                ->placeholder('Select a fallback locale')
                                 ->helperText('Secondary locale code used when translated content is missing.')
-                                ->maxLength(10),
-                            TextInput::make('default_timezone')
+                                ->searchable()
+                                ->options(self::localeOptions()),
+                            Select::make('default_timezone')
                                 ->label('Default Timezone')
-                                ->placeholder('Europe/Berlin')
+                                ->placeholder('Select a default timezone')
                                 ->helperText('Canonical timezone identifier used across scheduling and display fallbacks.')
-                                ->maxLength(100),
-                            TextInput::make('default_currency')
+                                ->searchable()
+                                ->options(self::timezoneOptions()),
+                            Select::make('default_currency')
                                 ->label('Default Currency')
-                                ->placeholder('EUR')
+                                ->placeholder('Select a default currency')
                                 ->helperText('ISO 4217 currency code used for price or billing fallbacks.')
-                                ->maxLength(10),
+                                ->searchable()
+                                ->options(self::currencyOptions()),
                         ]),
                 ]),
             Section::make('Formatting Defaults')
@@ -504,16 +511,18 @@ final class OpsSettingsPageSchema
                 ->schema([
                     Grid::make(2)
                         ->schema([
-                            TextInput::make('default_date_format')
+                            Select::make('default_date_format')
                                 ->label('Default Date Format')
-                                ->placeholder('d.m.Y')
-                                ->helperText('Human-readable date format fallback for public or operator-facing display.')
-                                ->maxLength(50),
-                            TextInput::make('default_time_format')
+                                ->placeholder('Select a date format')
+                                ->helperText('Choose one of the most common date format templates. The preview shows how the format actually looks.')
+                                ->searchable()
+                                ->options(self::dateFormatOptions()),
+                            Select::make('default_time_format')
                                 ->label('Default Time Format')
-                                ->placeholder('H:i')
-                                ->helperText('Human-readable time format fallback for public or operator-facing display.')
-                                ->maxLength(50),
+                                ->placeholder('Select a time format')
+                                ->helperText('Choose one of the most common time format templates. The preview shows how the format actually looks.')
+                                ->searchable()
+                                ->options(self::timeFormatOptions()),
                         ]),
                 ]),
             Section::make('Messaging Defaults')
@@ -550,6 +559,104 @@ final class OpsSettingsPageSchema
                         ]),
                 ]),
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function localeOptions(): array
+    {
+        if (class_exists(Locales::class)) {
+            $options = Locales::getNames('en');
+            ksort($options, SORT_NATURAL | SORT_FLAG_CASE);
+
+            return $options;
+        }
+
+        return [
+            'de' => 'German',
+            'en' => 'English',
+            'es' => 'Spanish',
+            'fr' => 'French',
+            'it' => 'Italian',
+            'nl' => 'Dutch',
+            'pt' => 'Portuguese',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function timezoneOptions(): array
+    {
+        $options = [];
+
+        foreach (\DateTimeZone::listIdentifiers() as $timezone) {
+            $options[$timezone] = str_replace('_', ' ', $timezone);
+        }
+
+        return $options;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function currencyOptions(): array
+    {
+        if (class_exists(Currencies::class)) {
+            $options = [];
+
+            foreach (Currencies::getNames('en') as $currency => $name) {
+                $options[$currency] = sprintf('%s (%s)', $name, $currency);
+            }
+
+            asort($options, SORT_NATURAL | SORT_FLAG_CASE);
+
+            return $options;
+        }
+
+        return [
+            'CHF' => 'Swiss Franc (CHF)',
+            'EUR' => 'Euro (EUR)',
+            'GBP' => 'British Pound (GBP)',
+            'USD' => 'US Dollar (USD)',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function dateFormatOptions(): array
+    {
+        return [
+            'd.m.Y' => self::formatPreview('d.m.Y'),
+            'd/m/Y' => self::formatPreview('d/m/Y'),
+            'Y-m-d' => self::formatPreview('Y-m-d'),
+            'j. M Y' => self::formatPreview('j. M Y'),
+            'M j, Y' => self::formatPreview('M j, Y'),
+            'l, d. F Y' => self::formatPreview('l, d. F Y'),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function timeFormatOptions(): array
+    {
+        return [
+            'H:i' => self::formatPreview('H:i'),
+            'H:i:s' => self::formatPreview('H:i:s'),
+            'h:i A' => self::formatPreview('h:i A'),
+            'g:i A' => self::formatPreview('g:i A'),
+            'h:i:s A' => self::formatPreview('h:i:s A'),
+        ];
+    }
+
+    private static function formatPreview(string $format): string
+    {
+        $preview = (new \DateTimeImmutable('2026-12-31 17:45:08', new \DateTimeZone('UTC')))->format($format);
+
+        return sprintf('%s (%s)', $preview, $format);
     }
 
     private static function urlInput(string $name, string $label, string $placeholder, string $helperText): TextInput
