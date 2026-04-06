@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- optional persisted audit configuration through `ops-settings.audit.driver`
+- package-owned audit writer contract and implementations:
+  - `OpsSettingsAuditWriter`
+  - `NullOpsSettingsAuditWriter`
+  - `ActivityLogOpsSettingsAuditWriter`
+- `OpsSettingsAuditListener` for bridging `OpsSettingsUpdated` into the configured audit writer
+- doctor diagnostics:
+  - `OpsSettingsAuditConfiguredCheck`
+  - `OpsSettingsStoreReadyCheck`
+
+### Changed
+
+- `OpsSettingsUpdated` now carries `oldValues` and `newValues` snapshots for changed keys
+- the package audit event definition now includes `old_values` and `new_values` context keys for persisted audit backends
+
+### Documentation
+
+- documented the optional audit configuration, doctor checks, expanded event payload, and the planned generic `website:install --configure-audit --audit-package=*` flow in the package README
+
 ## [0.1.0] - 2026-04-05
 
 ### Added

@@ -13,6 +13,10 @@ Provides six structured settings groups (identity, contact, brand, social, legal
 | yezzmedia/laravel-foundation | `^0.1` |
 | spatie/laravel-settings | `^3.0` |
 
+Optional:
+
+- `spatie/laravel-activitylog ^5.0` for persisted ops-settings audit records
+
 ## Installation
 
 ```bash
@@ -42,6 +46,26 @@ php artisan migrate
 php artisan db:seed --class="YezzMedia\OpsSettings\Database\Seeders\OpsSettingsDefaultsSeeder"
 ```
 
+### Audit persistence
+
+Persisted ops-settings audit is optional.
+
+Current manual setup:
+
+```bash
+composer require spatie/laravel-activitylog
+php artisan vendor:publish --tag=laravel-ops-settings-config
+```
+
+Then set `ops-settings.audit.driver` to `activitylog`.
+
+Planned central install flow:
+
+```bash
+php artisan website:install --configure-audit --audit-package=yezzmedia/laravel-ops-settings
+php artisan website:install --configure-audit --audit-package=all
+```
+
 ## Configuration
 
 Publish the config file:
@@ -58,11 +82,17 @@ return [
         'enabled' => true,   // Toggle package-owned settings cache
         'store'   => null,   // Cache store to use (null = default)
     ],
+    'audit' => [
+        'driver' => null,    // null or 'activitylog'
+    ],
     'defaults' => [
         'seed_on_install' => true, // Seed defaults during install flow
     ],
 ];
 ```
+
+When `audit.driver` is `null`, the package emits runtime audit events without persisting them.
+When `audit.driver` is `activitylog`, the package uses the activitylog-backed audit writer.
 
 ## Settings Groups
 
@@ -183,8 +213,33 @@ Dispatched after every successful `UpdateOpsSettingsAction::execute()` call.
 | `group` | `OpsSettingsGroup` | The settings group that was updated |
 | `changedKeys` | `array<int, string>` | Attribute keys that were changed |
 | `actorId` | `int\|string\|null` | ID of the actor who triggered the update |
+| `oldValues` | `array<string, mixed>` | Previous values for the changed keys |
+| `newValues` | `array<string, mixed>` | Persisted values after the update |
 | `context` | `array<string, mixed>` | Arbitrary caller-provided context |
 | `source` | `?string` | String identifying the update source |
+
+## Audit integration
+
+The package defines the `ops.settings.updated` audit event through foundation metadata and writes persisted audit only when explicitly configured.
+
+Audit writer behavior:
+
+- `ops-settings.audit.driver=null`: use `NullOpsSettingsAuditWriter`
+- `ops-settings.audit.driver=activitylog`: use `ActivityLogOpsSettingsAuditWriter`
+
+If `activitylog` is configured but `spatie/laravel-activitylog` is missing, the package fails explicitly during binding.
+
+## Doctor checks
+
+The package registers two doctor checks through foundation:
+
+- `ops_settings_audit_configured`
+  - `passed` when `ops-settings.audit.driver=activitylog`
+  - `warning` when persisted audit is intentionally disabled
+  - `failed` when an unsupported audit driver is configured
+- `ops_settings_store_ready`
+  - `passed` when the settings store is present and all published ops-settings migrations are applied
+  - `failed` when the settings table or required migrations are missing
 
 ## Permissions
 
@@ -194,6 +249,8 @@ Dispatched after every successful `UpdateOpsSettingsAction::execute()` call.
 | `ops.settings.manage` | Mutate operator-managed global platform settings |
 
 Permissions are registered via `OpsSettingsPlatformPackage` and synchronized by `yezzmedia/laravel-access`.
+
+The planned generic foundation audit installer will let operators opt this package into persisted audit through `website:install --configure-audit --audit-package=yezzmedia/laravel-ops-settings`.
 
 ## Testing
 
