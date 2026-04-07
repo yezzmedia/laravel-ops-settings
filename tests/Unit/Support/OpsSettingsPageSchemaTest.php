@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use YezzMedia\OpsSettings\Support\OpsSettingsGroup;
@@ -65,4 +66,25 @@ it('provides stable locale timezone currency and format options', function (): v
         ->toHaveKey('h:i A')
         ->and(OpsSettingsPageSchema::timeFormatOptions()['H:i'])->toContain('17:45')
         ->toContain('(H:i)');
+});
+
+it('uses select country options and keeps visit actions on support urls', function (): void {
+    $sections = OpsSettingsPageSchema::schema(OpsSettingsGroup::Contact);
+    $addressGrid = $sections[2]->getDefaultChildComponents()[0];
+    $supportGrid = $sections[1]->getDefaultChildComponents()[0];
+
+    expect($addressGrid)->toBeInstanceOf(Grid::class)
+        ->and($supportGrid)->toBeInstanceOf(Grid::class);
+
+    $addressFields = $addressGrid->getDefaultChildComponents();
+    $supportFields = $supportGrid->getDefaultChildComponents();
+
+    expect($addressFields[4])->toBeInstanceOf(Select::class)
+        ->and($addressFields[4]->getName())->toBe('country_code')
+        ->and(OpsSettingsPageSchema::countryOptions())->toHaveKey('DE')
+        ->toHaveKey('US')
+        ->and($supportFields[0])->toBeInstanceOf(TextInput::class)
+        ->and($supportFields[0]->getName())->toBe('support_url')
+        ->and($supportFields[1])->toBeInstanceOf(TextInput::class)
+        ->and($supportFields[1]->getName())->toBe('support_chat_url');
 });

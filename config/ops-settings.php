@@ -47,4 +47,19 @@ return [
         'seed_on_install' => true,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Workspace Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Controls package-owned UX helpers such as import/export history windows
+    | and the curated preset list available to operators.
+    |
+    */
+
+    'workspace' => [
+        'history_limit' => 20,
+        'presets' => ['de', 'ch', 'at', 'us'],
+    ],
+
 ];

@@ -17,6 +17,8 @@ use YezzMedia\Foundation\Registry\PermissionRegistry;
 use YezzMedia\OpsSettings\Actions\UpdateOpsSettingsAction;
 use YezzMedia\OpsSettings\Contracts\OpsSettingsAuditWriter;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsAuditConfiguredCheck;
+use YezzMedia\OpsSettings\Doctor\OpsSettingsCompletenessCheck;
+use YezzMedia\OpsSettings\Doctor\OpsSettingsConsistencyCheck;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsStoreReadyCheck;
 use YezzMedia\OpsSettings\Install\ConfigureOpsSettingsAuditInstallStep;
 use YezzMedia\OpsSettings\Install\EnsureOpsSettingsStoreReadyInstallStep;
@@ -42,7 +44,7 @@ it('registers the ops-settings bootstrap bindings', function (): void {
         ->toHaveCount(6)
         ->and(app(OpsModuleRegistry::class)->forPackage('yezzmedia/laravel-ops-settings'))
         ->toHaveCount(6)
-        ->and($doctorResults->keys()->all())->toContain('audit_configured', 'settings_store_ready')
+        ->and($doctorResults->keys()->all())->toContain('audit_configured', 'settings_completeness', 'settings_consistency', 'settings_store_ready')
         ->and(app(OpsSettingsManager::class))->toBeInstanceOf(OpsSettingsManager::class)
         ->and(app(UpdateOpsSettingsAction::class))->toBeInstanceOf(UpdateOpsSettingsAction::class);
 });
@@ -51,7 +53,9 @@ it('merges the package configuration', function (): void {
     expect(config('ops-settings.cache.enabled'))->toBeFalse() // forced off in test env
         ->and(config('ops-settings.cache.store'))->toBeNull()
         ->and(config('ops-settings.audit.driver'))->toBeNull()
-        ->and(config('ops-settings.defaults.seed_on_install'))->toBeTrue();
+        ->and(config('ops-settings.defaults.seed_on_install'))->toBeTrue()
+        ->and(config('ops-settings.workspace.history_limit'))->toBe(20)
+        ->and(config('ops-settings.workspace.presets'))->toBe(['de', 'ch', 'at', 'us']);
 });
 
 it('registers a publishable ops settings config file', function (): void {
@@ -99,9 +103,11 @@ it('describes the approved bootstrap surface', function (): void {
         ->and($package->installSteps()[1])->toBeInstanceOf(ConfigureOpsSettingsAuditInstallStep::class)
         ->and($package->installSteps()[2])->toBeInstanceOf(EnsureOpsSettingsStoreReadyInstallStep::class)
         ->and($package->installSteps()[3])->toBeInstanceOf(SeedOpsSettingsDefaultsInstallStep::class)
-        ->and($package->doctorChecks())->toHaveCount(2)
+        ->and($package->doctorChecks())->toHaveCount(4)
         ->and($package->doctorChecks()[0])->toBeInstanceOf(OpsSettingsAuditConfiguredCheck::class)
-        ->and($package->doctorChecks()[1])->toBeInstanceOf(OpsSettingsStoreReadyCheck::class)
+        ->and($package->doctorChecks()[1])->toBeInstanceOf(OpsSettingsCompletenessCheck::class)
+        ->and($package->doctorChecks()[2])->toBeInstanceOf(OpsSettingsConsistencyCheck::class)
+        ->and($package->doctorChecks()[3])->toBeInstanceOf(OpsSettingsStoreReadyCheck::class)
         ->and($opsModules->keys()->all())->toBe([
             'content.settings.identity',
             'content.settings.contact',

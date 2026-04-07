@@ -6,6 +6,7 @@ namespace YezzMedia\OpsSettings\Support;
 
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Support\Collection;
 use InvalidArgumentException;
 use Spatie\LaravelSettings\Settings;
 use YezzMedia\OpsSettings\Settings\OperatorIdentitySettings;
@@ -31,6 +32,7 @@ class OpsSettingsManager
 
     public function __construct(
         private readonly CacheFactory $cacheFactory,
+        private readonly OpsSettingsHistoryReader $historyReader,
         private readonly bool $cacheEnabled,
         private readonly ?string $cacheStore,
     ) {
@@ -110,6 +112,42 @@ class OpsSettingsManager
     }
 
     /**
+     * @return array<string, array<string, mixed>>
+     */
+    public function internalPayload(): array
+    {
+        $payload = [];
+
+        foreach (OpsSettingsGroup::cases() as $group) {
+            $settings = $this->settingsForGroup($group)->toArray();
+            $payload[$group->value] = array_intersect_key(
+                $settings,
+                array_flip($group->internalProperties()),
+            );
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public function compliancePayload(): array
+    {
+        $payload = [];
+
+        foreach (OpsSettingsGroup::cases() as $group) {
+            $settings = $this->settingsForGroup($group)->toArray();
+            $payload[$group->value] = array_intersect_key(
+                $settings,
+                array_flip($group->complianceSensitiveProperties()),
+            );
+        }
+
+        return $payload;
+    }
+
+    /**
      * @return array<string, array<int, string>>
      */
     public function missingRequiredFields(): array
@@ -134,6 +172,146 @@ class OpsSettingsManager
     public function isComplete(): bool
     {
         return $this->missingRequiredFields() === [];
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public function groupStatuses(): array
+    {
+        $missing = $this->missingRequiredFields();
+        $statuses = [];
+
+        foreach (OpsSettingsGroup::cases() as $group) {
+            $approved = $group->approvedProperties();
+            $settings = $this->settingsForGroup($group)->toArray();
+            $filledCount = count(array_filter(
+                $approved,
+                static fn (string $property): bool => filled($settings[$property] ?? null),
+            ));
+
+            $statuses[$group->value] = [
+                'label' => $group->label(),
+                'description' => $group->description(),
+                'missing_required' => $missing[$group->value] ?? [],
+                'required_total' => count($group->requiredProperties()),
+                'filled_total' => $filledCount,
+                'approved_total' => count($approved),
+                'completion_percent' => count($approved) === 0 ? 100 : (int) round(($filledCount / count($approved)) * 100),
+                'status' => isset($missing[$group->value]) ? 'incomplete' : ($filledCount === 0 ? 'empty' : 'ready'),
+                'latest_change' => $this->historyReader->latestForGroup($group),
+            ];
+        }
+
+        return $statuses;
+    }
+
+    public function completionPercent(): int
+    {
+        $statuses = $this->groupStatuses();
+
+        if ($statuses === []) {
+            return 100;
+        }
+
+        return (int) round(collect($statuses)->avg('completion_percent'));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function identitySummary(): array
+    {
+        return [
+            'name' => $this->identity()->name,
+            'platform_label' => $this->identity()->platform_label,
+            'display_name' => collect([$this->identity()->name, $this->identity()->platform_label])->filter()->implode(' · '),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function contactSummary(): array
+    {
+        return [
+            'support_email' => $this->contact()->support_email,
+            'noreply_email' => $this->contact()->noreply_email,
+            'support_url' => $this->contact()->support_url,
+            'country_code' => $this->contact()->country_code,
+            'city_line' => collect([$this->contact()->postal_code, $this->contact()->city])->filter()->implode(' '),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function brandSummary(): array
+    {
+        return [
+            'brand_name' => $this->brand()->brand_name,
+            'brand_tagline' => $this->brand()->brand_tagline,
+            'brand_claim' => $this->brand()->brand_claim,
+            'primary_color' => $this->brand()->primary_color,
+            'secondary_color' => $this->brand()->secondary_color,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function legalSummary(): array
+    {
+        return [
+            'legal_entity_name' => $this->legal()->legal_entity_name,
+            'registration_number' => $this->legal()->registration_number,
+            'vat_id' => $this->legal()->vat_id,
+            'privacy_contact_email' => $this->legal()->privacy_contact_email,
+            'imprint_url' => $this->legal()->imprint_url,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function websiteDefaultsSummary(): array
+    {
+        return [
+            'default_locale' => $this->websiteDefaults()->default_locale,
+            'fallback_locale' => $this->websiteDefaults()->fallback_locale,
+            'default_timezone' => $this->websiteDefaults()->default_timezone,
+            'default_currency' => $this->websiteDefaults()->default_currency,
+            'default_date_format' => $this->websiteDefaults()->default_date_format,
+            'default_time_format' => $this->websiteDefaults()->default_time_format,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function exportSnapshot(): array
+    {
+        return [
+            'exported_at' => now()->toIso8601String(),
+            'completion_percent' => $this->completionPercent(),
+            'groups' => $this->snapshot(),
+        ];
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public function presetValues(string $preset): array
+    {
+        return OpsSettingsRegionPreset::values($preset);
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function recentHistory(?OpsSettingsGroup $group = null, int $limit = 20): Collection
+    {
+        return $this->historyReader->recent($group, $limit);
     }
 
     /**
