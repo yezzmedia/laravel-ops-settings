@@ -10,6 +10,7 @@ use Spatie\LaravelSettings\SettingsRepositories\SettingsRepository;
 use YezzMedia\OpsSettings\Events\OpsSettingsUpdated;
 use YezzMedia\OpsSettings\Support\OpsSettingsGroup;
 use YezzMedia\OpsSettings\Support\OpsSettingsManager;
+use YezzMedia\OpsSettings\Support\OpsSettingsValidator;
 
 /**
  * Package-owned mutation boundary for settings updates.
@@ -23,6 +24,7 @@ final class UpdateOpsSettingsAction
     public function __construct(
         private readonly OpsSettingsManager $manager,
         private readonly SettingsRepository $repository,
+        private readonly OpsSettingsValidator $validator,
     ) {}
 
     /**
@@ -48,13 +50,15 @@ final class UpdateOpsSettingsAction
             }
         }
 
+        $validatedAttributes = $this->validator->validate($group, $attributes);
+
         $this->seedMissingApprovedProperties($group);
 
         /** @var Settings $settings */
         $settings = app($group->settingsClass());
         $oldValues = [];
 
-        foreach ($attributes as $key => $value) {
+        foreach ($validatedAttributes as $key => $value) {
             $oldValues[$key] = $settings->{$key};
             $settings->{$key} = $value;
         }
@@ -63,7 +67,7 @@ final class UpdateOpsSettingsAction
 
         $newValues = [];
 
-        foreach (array_keys($attributes) as $key) {
+        foreach (array_keys($validatedAttributes) as $key) {
             $newValues[$key] = $settings->{$key};
         }
 
@@ -71,7 +75,7 @@ final class UpdateOpsSettingsAction
 
         event(new OpsSettingsUpdated(
             group: $group,
-            changedKeys: array_keys($attributes),
+            changedKeys: array_keys($validatedAttributes),
             actorId: $actorId,
             oldValues: $oldValues,
             newValues: $newValues,

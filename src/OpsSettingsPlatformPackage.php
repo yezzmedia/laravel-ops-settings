@@ -19,6 +19,8 @@ use YezzMedia\Foundation\Data\PermissionDefinition;
 use YezzMedia\Foundation\Doctor\DoctorCheck;
 use YezzMedia\Foundation\Install\InstallStep;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsAuditConfiguredCheck;
+use YezzMedia\OpsSettings\Doctor\OpsSettingsCompletenessCheck;
+use YezzMedia\OpsSettings\Doctor\OpsSettingsConsistencyCheck;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsStoreReadyCheck;
 use YezzMedia\OpsSettings\Install\ConfigureOpsSettingsAuditInstallStep;
 use YezzMedia\OpsSettings\Install\EnsureOpsSettingsStoreReadyInstallStep;
@@ -144,6 +146,8 @@ final class OpsSettingsPlatformPackage implements DefinesAuditEvents, DefinesIns
     {
         return [
             app(OpsSettingsAuditConfiguredCheck::class),
+            app(OpsSettingsCompletenessCheck::class),
+            app(OpsSettingsConsistencyCheck::class),
             app(OpsSettingsStoreReadyCheck::class),
         ];
     }

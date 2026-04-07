@@ -12,10 +12,10 @@ use Spatie\LaravelSettings\Settings;
 class OperatorIdentitySettings extends Settings
 {
     /** Operator display name used for platform presentation. */
-    public string $name;
+    public ?string $name = null;
 
     /** Optional platform label used in sub-brand or multi-tenant presentation. */
-    public ?string $platform_label;
+    public ?string $platform_label = null;
 
     public static function group(): string
     {

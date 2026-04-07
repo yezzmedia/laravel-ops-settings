@@ -15,14 +15,18 @@ use YezzMedia\Foundation\Support\PlatformPackageRegistrar;
 use YezzMedia\OpsSettings\Actions\UpdateOpsSettingsAction;
 use YezzMedia\OpsSettings\Contracts\OpsSettingsAuditWriter;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsAuditConfiguredCheck;
+use YezzMedia\OpsSettings\Doctor\OpsSettingsCompletenessCheck;
+use YezzMedia\OpsSettings\Doctor\OpsSettingsConsistencyCheck;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsStoreReadyCheck;
 use YezzMedia\OpsSettings\Events\OpsSettingsUpdated;
 use YezzMedia\OpsSettings\Install\ConfigureOpsSettingsAuditInstallStep;
 use YezzMedia\OpsSettings\Listeners\OpsSettingsAuditListener;
 use YezzMedia\OpsSettings\Support\ActivityLogOpsSettingsAuditWriter;
 use YezzMedia\OpsSettings\Support\NullOpsSettingsAuditWriter;
+use YezzMedia\OpsSettings\Support\OpsSettingsHistoryReader;
 use YezzMedia\OpsSettings\Support\OpsSettingsManager;
 use YezzMedia\OpsSettings\Support\OpsSettingsStoreSetup;
+use YezzMedia\OpsSettings\Support\OpsSettingsValidator;
 
 /**
  * Bootstrap root for the ops-settings package.
@@ -53,13 +57,18 @@ class OpsSettingsServiceProvider extends PackageServiceProvider
     {
         $this->app->singleton(OpsSettingsAuditWriter::class, fn (): OpsSettingsAuditWriter => $this->makeAuditWriter());
         $this->app->singleton(OpsSettingsAuditConfiguredCheck::class);
+        $this->app->singleton(OpsSettingsCompletenessCheck::class);
+        $this->app->singleton(OpsSettingsConsistencyCheck::class);
         $this->app->singleton(ConfigureOpsSettingsAuditInstallStep::class);
+        $this->app->singleton(OpsSettingsHistoryReader::class);
         $this->app->singleton(OpsSettingsStoreSetup::class);
         $this->app->singleton(OpsSettingsStoreReadyCheck::class);
+        $this->app->singleton(OpsSettingsValidator::class);
 
         $this->app->singleton(OpsSettingsManager::class, function (): OpsSettingsManager {
             return new OpsSettingsManager(
                 cacheFactory: $this->app->make(CacheFactory::class),
+                historyReader: $this->app->make(OpsSettingsHistoryReader::class),
                 cacheEnabled: (bool) config('ops-settings.cache.enabled', true),
                 cacheStore: config('ops-settings.cache.store'),
             );
@@ -69,6 +78,7 @@ class OpsSettingsServiceProvider extends PackageServiceProvider
             return new UpdateOpsSettingsAction(
                 manager: $this->app->make(OpsSettingsManager::class),
                 repository: $this->app->make(SettingsRepository::class),
+                validator: $this->app->make(OpsSettingsValidator::class),
             );
         });
     }

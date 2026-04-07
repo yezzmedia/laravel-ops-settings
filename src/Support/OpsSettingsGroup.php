@@ -127,6 +127,47 @@ enum OpsSettingsGroup: string
     }
 
     /**
+     * @return array<int, string>
+     */
+    public function internalProperties(): array
+    {
+        return match ($this) {
+            self::Brand => ['logo_reference', 'favicon_reference', 'icon_reference', 'email_logo_reference'],
+            default => [],
+        };
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function complianceSensitiveProperties(): array
+    {
+        return match ($this) {
+            self::Legal => [
+                'legal_entity_name',
+                'managing_director',
+                'registration_number',
+                'registration_court',
+                'vat_id',
+                'privacy_contact_email',
+            ],
+            default => [],
+        };
+    }
+
+    public function description(): string
+    {
+        return match ($this) {
+            self::Identity => 'Core operator naming and shared platform labels.',
+            self::Contact => 'Reusable support channels, contact addresses, and customer-facing contact defaults.',
+            self::Brand => 'Shared brand naming, colors, claims, and internal asset references.',
+            self::Social => 'Official public profile URLs and social channel defaults.',
+            self::Legal => 'Legal identity, registrations, policy links, and compliance-sensitive operator data.',
+            self::WebsiteDefaults => 'Locale, timezone, currency, formatting, and fallback website messaging defaults.',
+        };
+    }
+
+    /**
      * Resolves a group from a string value, failing fast on unknown groups.
      *
      * @throws InvalidArgumentException

@@ -88,3 +88,51 @@ it('backfills missing legacy settings keys before saving expanded groups', funct
         ->and(DB::table('settings')->where('group', 'contact')->where('name', 'support_email')->value('payload'))
         ->toBe(json_encode('support@example.com'));
 });
+
+it('normalizes and validates attributes before saving', function (): void {
+    DB::table('settings')->insert([
+        ['group' => 'contact', 'name' => 'support_email', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'noreply_email', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'contact_phone', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'contact_whatsapp', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'support_url', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'support_chat_url', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'support_hours', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'address_line_1', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'address_line_2', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'postal_code', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'city', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'country_code', 'locked' => false, 'payload' => json_encode(null)],
+    ]);
+
+    app(UpdateOpsSettingsAction::class)->execute(OpsSettingsGroup::Contact, [
+        'country_code' => ' de ',
+        'support_email' => 'support@example.com',
+        'noreply_email' => 'noreply@example.com',
+    ]);
+
+    expect(DB::table('settings')->where('group', 'contact')->where('name', 'country_code')->value('payload'))
+        ->toBe(json_encode('DE'));
+});
+
+it('fails when normalized contact values violate validation rules', function (): void {
+    DB::table('settings')->insert([
+        ['group' => 'contact', 'name' => 'support_email', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'noreply_email', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'contact_phone', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'contact_whatsapp', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'support_url', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'support_chat_url', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'support_hours', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'address_line_1', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'address_line_2', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'postal_code', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'city', 'locked' => false, 'payload' => json_encode(null)],
+        ['group' => 'contact', 'name' => 'country_code', 'locked' => false, 'payload' => json_encode(null)],
+    ]);
+
+    expect(fn () => app(UpdateOpsSettingsAction::class)->execute(OpsSettingsGroup::Contact, [
+        'support_email' => 'same@example.com',
+        'noreply_email' => 'same@example.com',
+    ]))->toThrow(InvalidArgumentException::class);
+});

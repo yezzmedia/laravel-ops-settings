@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace YezzMedia\OpsSettings\Support;
 
+use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Symfony\Component\Intl\Countries;
 use Symfony\Component\Intl\Currencies;
 use Symfony\Component\Intl\Locales;
 
@@ -209,12 +211,14 @@ final class OpsSettingsPageSchema
                                 ->placeholder('support@example.com')
                                 ->helperText('Use the main monitored support inbox that public pages and operator workflows should reuse.')
                                 ->email()
+                                ->hint('Public-facing primary support address')
                                 ->maxLength(255),
                             TextInput::make('noreply_email')
                                 ->label('No-Reply Email')
                                 ->placeholder('noreply@example.com')
                                 ->helperText('Optional outbound-only sender address for platform emails that should not receive direct replies.')
                                 ->email()
+                                ->hint('Keep distinct from the support inbox')
                                 ->maxLength(255),
                             TextInput::make('contact_phone')
                                 ->label('Contact Phone')
@@ -240,12 +244,14 @@ final class OpsSettingsPageSchema
                                 ->placeholder('https://example.com/support')
                                 ->helperText('Canonical public support or help-center URL.')
                                 ->url()
+                                ->suffixAction(self::visitUrlAction('support_url'))
                                 ->maxLength(500),
                             TextInput::make('support_chat_url')
                                 ->label('Support Chat URL')
                                 ->placeholder('https://example.com/live-chat')
                                 ->helperText('Optional public chat entry point for support or concierge workflows.')
                                 ->url()
+                                ->suffixAction(self::visitUrlAction('support_chat_url'))
                                 ->maxLength(500),
                         ]),
                     Textarea::make('support_hours')
@@ -279,11 +285,12 @@ final class OpsSettingsPageSchema
                                 ->placeholder('Berlin')
                                 ->helperText('Use the full city name as it should appear in customer-facing contexts.')
                                 ->maxLength(100),
-                            TextInput::make('country_code')
+                            Select::make('country_code')
                                 ->label('Country Code')
-                                ->placeholder('DE')
+                                ->placeholder('Select a country code')
                                 ->helperText('Use the ISO 3166-1 alpha-2 code, for example `DE`, `FR`, or `US`.')
-                                ->maxLength(2),
+                                ->searchable()
+                                ->options(self::countryOptions()),
                         ]),
                 ]),
         ];
@@ -309,6 +316,7 @@ final class OpsSettingsPageSchema
                                 ->label('Default Email From Name')
                                 ->placeholder('Yezz Platform')
                                 ->helperText('Reusable sender display name for transactional or operator-facing email defaults.')
+                                ->hint('Used when no package-specific sender name exists')
                                 ->maxLength(255),
                             TextInput::make('brand_tagline')
                                 ->label('Brand Tagline')
@@ -331,6 +339,7 @@ final class OpsSettingsPageSchema
                                 ->label('Logo Reference')
                                 ->placeholder('brand/primary-lockup')
                                 ->helperText('Stable internal asset reference for the primary logo.')
+                                ->hint('Internal-only asset key')
                                 ->maxLength(500),
                             TextInput::make('favicon_reference')
                                 ->label('Favicon Reference')
@@ -358,11 +367,13 @@ final class OpsSettingsPageSchema
                                 ->label('Primary Color')
                                 ->placeholder('#1F3A5F')
                                 ->helperText('Use a hex value that represents the main platform color and is safe for repeated reuse.')
+                                ->hint('Example preview: '.self::colorPreview('#1F3A5F'))
                                 ->maxLength(20),
                             TextInput::make('secondary_color')
                                 ->label('Secondary Color')
                                 ->placeholder('#9F7AEA')
                                 ->helperText('Use a supporting hex value that complements the primary brand color.')
+                                ->hint('Example preview: '.self::colorPreview('#9F7AEA'))
                                 ->maxLength(20),
                         ]),
                 ]),
@@ -587,6 +598,31 @@ final class OpsSettingsPageSchema
     /**
      * @return array<string, string>
      */
+    public static function countryOptions(): array
+    {
+        if (class_exists(Countries::class)) {
+            $options = [];
+
+            foreach (Countries::getNames('en') as $countryCode => $countryName) {
+                $options[$countryCode] = sprintf('%s (%s)', $countryName, $countryCode);
+            }
+
+            asort($options, SORT_NATURAL | SORT_FLAG_CASE);
+
+            return $options;
+        }
+
+        return [
+            'AT' => 'Austria (AT)',
+            'CH' => 'Switzerland (CH)',
+            'DE' => 'Germany (DE)',
+            'US' => 'United States (US)',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
     public static function timezoneOptions(): array
     {
         $options = [];
@@ -657,6 +693,20 @@ final class OpsSettingsPageSchema
         $preview = (new \DateTimeImmutable('2026-12-31 17:45:08', new \DateTimeZone('UTC')))->format($format);
 
         return sprintf('%s (%s)', $preview, $format);
+    }
+
+    private static function colorPreview(string $color): string
+    {
+        return sprintf('%s sample', $color);
+    }
+
+    private static function visitUrlAction(string $field): Action
+    {
+        return Action::make('visit_'.$field)
+            ->label('Open')
+            ->icon('heroicon-m-arrow-top-right-on-square')
+            ->url(fn ($get): ?string => filled($get($field)) ? (string) $get($field) : null)
+            ->openUrlInNewTab();
     }
 
     private static function urlInput(string $name, string $label, string $placeholder, string $helperText): TextInput

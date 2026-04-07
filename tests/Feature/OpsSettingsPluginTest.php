@@ -77,6 +77,8 @@ it('settings child pages keep the Settings navigation group for deep links', fun
 
 it('the central settings workspace is in the sidebar while legacy group pages stay hidden', function (): void {
     expect(OpsSettingsPage::shouldRegisterNavigation())->toBeTrue()
+        ->and(OpsSettingsPage::getNavigationBadge())->toEndWith('%')
+        ->and(OpsSettingsPage::getNavigationBadgeColor())->toBe('warning')
         ->and(IdentitySettingsPage::shouldRegisterNavigation())->toBeFalse()
         ->and(ContactSettingsPage::shouldRegisterNavigation())->toBeFalse()
         ->and(BrandSettingsPage::shouldRegisterNavigation())->toBeFalse()
