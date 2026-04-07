@@ -2,7 +2,7 @@
 
 Operator-managed global platform settings for the Yezz Media Laravel website platform.
 
-Provides six structured settings groups (identity, contact, brand, social, legal, website defaults) backed by [`spatie/laravel-settings`](https://github.com/spatie/laravel-settings) v3, with a cache-aware manager, a guarded mutation action, audit events, and a foundation-integrated install flow.
+Provides six structured settings groups (identity, contact, brand, social, legal, website defaults) backed by [`spatie/laravel-settings`](https://github.com/spatie/laravel-settings) v3, with a cache-aware manager, guarded mutations, audit events, a foundation-integrated install flow, and a Filament-powered operator workspace.
 
 ## Requirements
 
@@ -66,6 +66,23 @@ php artisan website:install --configure-audit --audit-package=yezzmedia/laravel-
 php artisan website:install --configure-audit --audit-package=all
 ```
 
+## Operator workspace
+
+When the consuming application exposes the ops panel, the package registers a central `OpsSettingsPage` workspace.
+
+The workspace includes:
+
+- one visible tabbed workspace page for all six settings groups
+- per-tab save boundaries through `UpdateOpsSettingsAction`
+- readiness snapshot and grouped completion badges
+- workspace overview cards with missing-required-field summaries
+- recent-changes audit table sourced from persisted ops-settings activity when available
+- curated region presets for `de`, `ch`, `at`, and `us`
+- JSON export/import helpers for grouped snapshot review
+- searchable selects for locale, timezone, currency, date format, time format, and country code
+
+The page keeps the legacy single-group pages registered as hidden deep-link compatibility pages, while the visible navigation surface now points at the central workspace.
+
 ## Configuration
 
 Publish the config file:
@@ -88,6 +105,11 @@ return [
     'defaults' => [
         'seed_on_install' => true, // Seed defaults during install flow
     ],
+
+    'workspace' => [
+        'history_limit' => 20,                 // Maximum recent audit rows shown in the workspace
+        'presets' => ['de', 'ch', 'at', 'us'], // Curated region presets available in the workspace
+    ],
 ];
 ```
 
@@ -99,11 +121,11 @@ When `audit.driver` is `activitylog`, the package uses the activitylog-backed au
 | Group | Class | `::group()` key | Description |
 |---|---|---|---|
 | Identity | `OperatorIdentitySettings` | `identity` | Operator name and platform label |
-| Contact | `PlatformContactSettings` | `contact` | Support email, phone, address |
-| Brand | `PlatformBrandSettings` | `brand` | Brand name, tagline, colors, logo reference |
-| Social | `PlatformSocialSettings` | `social` | Social media profile URLs |
-| Legal | `PlatformLegalSettings` | `legal` | Legal entity, VAT, legal notice snippet |
-| Website Defaults | `PlatformWebsiteDefaultsSettings` | `website_defaults` | Site title pattern, footer label, support label |
+| Contact | `PlatformContactSettings` | `contact` | Support channels, outbound email, URLs, and postal address |
+| Brand | `PlatformBrandSettings` | `brand` | Brand copy, sender defaults, colors, and internal asset references |
+| Social | `PlatformSocialSettings` | `social` | Official public social and community profile URLs |
+| Legal | `PlatformLegalSettings` | `legal` | Legal entity, registration, compliance URLs, and notice content |
+| Website Defaults | `PlatformWebsiteDefaultsSettings` | `website_defaults` | Reusable locale, timezone, currency, formatting, and copy defaults |
 
 ### Properties
 
@@ -119,7 +141,12 @@ When `audit.driver` is `activitylog`, the package uses the activitylog-backed au
 | Property | Type | Description |
 |---|---|---|
 | `support_email` | `?string` | Primary support email address |
+| `noreply_email` | `?string` | Outbound-only no-reply address |
 | `contact_phone` | `?string` | Contact phone number |
+| `contact_whatsapp` | `?string` | WhatsApp-compatible support number |
+| `support_url` | `?string` | Canonical support or help-center URL |
+| `support_chat_url` | `?string` | Canonical chat entry URL |
+| `support_hours` | `?string` | Operator-authored support-hours copy |
 | `address_line_1` | `?string` | Address line 1 |
 | `address_line_2` | `?string` | Address line 2 |
 | `postal_code` | `?string` | Postal code |
@@ -132,9 +159,14 @@ When `audit.driver` is `activitylog`, the package uses the activitylog-backed au
 |---|---|---|
 | `brand_name` | `?string` | Brand display name |
 | `brand_tagline` | `?string` | Short tagline |
+| `brand_claim` | `?string` | Secondary brand claim or promise |
+| `default_email_from_name` | `?string` | Default sender display name |
 | `primary_color` | `?string` | Hex color (e.g. `#1a2b3c`) |
 | `secondary_color` | `?string` | Hex color (e.g. `#1a2b3c`) |
 | `logo_reference` | `?string` | Opaque internal asset reference |
+| `favicon_reference` | `?string` | Internal favicon asset reference |
+| `icon_reference` | `?string` | Internal icon-mark asset reference |
+| `email_logo_reference` | `?string` | Internal email-logo asset reference |
 
 **PlatformSocialSettings**
 
@@ -145,16 +177,27 @@ When `audit.driver` is `activitylog`, the package uses the activitylog-backed au
 | `linkedin_url` | `?string` | Absolute HTTPS URL |
 | `x_url` | `?string` | Absolute HTTPS URL |
 | `youtube_url` | `?string` | Absolute HTTPS URL |
+| `tiktok_url` | `?string` | Absolute HTTPS URL |
+| `threads_url` | `?string` | Absolute HTTPS URL |
+| `github_url` | `?string` | Absolute HTTPS URL |
+| `mastodon_url` | `?string` | Absolute HTTPS URL |
+| `telegram_url` | `?string` | Absolute HTTPS URL |
 
 **PlatformLegalSettings**
 
 | Property | Type | Description |
 |---|---|---|
 | `legal_entity_name` | `?string` | Formal legal entity name |
+| `managing_director` | `?string` | Responsible managing director or executive |
 | `registration_number` | `?string` | Company registration number |
+| `registration_court` | `?string` | Registration court or authority |
 | `vat_id` | `?string` | VAT identification number |
 | `legal_notice_snippet` | `?string` | Plaintext or Markdown (no raw HTML in V1) |
 | `privacy_contact_email` | `?string` | Privacy / GDPR contact email |
+| `imprint_url` | `?string` | Canonical imprint URL |
+| `privacy_policy_url` | `?string` | Canonical privacy policy URL |
+| `terms_url` | `?string` | Canonical terms URL |
+| `cookie_policy_url` | `?string` | Canonical cookie policy URL |
 
 **PlatformWebsiteDefaultsSettings**
 
@@ -163,6 +206,30 @@ When `audit.driver` is `activitylog`, the package uses the activitylog-backed au
 | `default_site_title_pattern` | `?string` | Site title pattern for downstream packages |
 | `default_footer_label` | `?string` | Global footer label fallback |
 | `default_support_label` | `?string` | Global support label fallback |
+| `default_support_cta_label` | `?string` | Global support CTA label fallback |
+| `default_reply_to_email` | `?string` | Reply-to fallback for downstream mail usage |
+| `default_locale` | `?string` | Default locale code |
+| `fallback_locale` | `?string` | Fallback locale code |
+| `default_timezone` | `?string` | Default timezone identifier |
+| `default_currency` | `?string` | Default ISO 4217 currency code |
+| `default_date_format` | `?string` | Default curated date format token |
+| `default_time_format` | `?string` | Default curated time format token |
+
+## Validation and normalization
+
+`UpdateOpsSettingsAction` validates and normalizes approved group attributes before persistence.
+
+Current validation highlights include:
+
+- trimmed string input with empty-string-to-`null` normalization
+- uppercase normalization for `country_code` and `default_currency`
+- curated option validation for locale, currency, date format, and time format
+- `timezone:all` validation for `default_timezone`
+- URL validation for support, social, and legal page links
+- hex color validation for `primary_color` and `secondary_color`
+- enforcement that `noreply_email` must differ from `support_email`
+
+Passing an approved key with an invalid value throws `InvalidArgumentException` with the first validation error message.
 
 ## Reading Settings
 
@@ -179,7 +246,27 @@ $settings->brand()->primary_color;
 $settings->social()->instagram_url;
 $settings->legal()->vat_id;
 $settings->websiteDefaults()->default_site_title_pattern;
+
+$settings->completionPercent();
+$settings->groupStatuses();
+$settings->identitySummary();
+$settings->contactSummary();
+$settings->websiteDefaultsSummary();
+$settings->publicPayload();
+$settings->internalPayload();
+$settings->compliancePayload();
+$settings->exportSnapshot();
+$settings->presetValues('de');
+$settings->recentHistory();
 ```
+
+Additional grouped helpers include:
+
+- `missingRequiredFields()` and `isComplete()` for workspace and ops readiness
+- `groupStatuses()` for per-group completion metadata and latest audit entry lookup
+- summary helpers for identity, contact, brand, legal, and website-default output
+- `exportSnapshot()` for JSON-friendly grouped exports
+- `recentHistory()` for normalized persisted audit rows when activity history is available
 
 ## Updating Settings
 
@@ -199,6 +286,8 @@ app(UpdateOpsSettingsAction::class)->execute(
 ```
 
 Passing an attribute that is not an approved property of the group throws `InvalidArgumentException`.
+
+The action also backfills missing legacy keys before saving expanded settings groups, so older installations can safely adopt newer settings properties incrementally.
 
 Authorization enforcement is the caller's responsibility.
 
@@ -233,12 +322,18 @@ The foundation audit installer updates package config only. It does not run the 
 
 ## Doctor checks
 
-The package registers two doctor checks through foundation:
+The package registers four doctor checks through foundation:
 
 - `ops_settings_audit_configured`
   - `passed` when `ops-settings.audit.driver=activitylog`
   - `warning` when persisted audit is intentionally disabled
   - `failed` when an unsupported audit driver is configured
+- `settings_completeness`
+  - `passed` when all required baseline ops settings fields are filled
+  - `warning` when required fields are still missing
+- `settings_consistency`
+  - `passed` when core defaults are internally consistent
+  - `warning` when conflicting defaults are detected, such as matching support/no-reply emails or identical default and fallback locales
 - `ops_settings_store_ready`
   - `passed` when the settings store is present and all published ops-settings migrations are applied
   - `failed` when the settings table or required migrations are missing
@@ -253,6 +348,16 @@ The package registers two doctor checks through foundation:
 Permissions are registered via `OpsSettingsPlatformPackage` and synchronized by `yezzmedia/laravel-access`.
 
 Operators can opt this package into persisted audit through `website:install --configure-audit --audit-package=yezzmedia/laravel-ops-settings`.
+
+## Runtime partitions
+
+`OpsSettingsGroup` now classifies approved properties into runtime-friendly partitions so downstream consumers can choose the right payload surface:
+
+- public properties for broadly reusable, safe presentation defaults
+- internal properties for package-owned asset references and similar internal wiring
+- compliance-sensitive properties for legal and regulated data handling
+
+Use `publicPayload()`, `internalPayload()`, and `compliancePayload()` on `OpsSettingsManager` instead of building these partitions manually.
 
 ## Testing
 
