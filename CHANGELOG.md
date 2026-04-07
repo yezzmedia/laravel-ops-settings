@@ -19,17 +19,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - doctor diagnostics:
   - `OpsSettingsAuditConfiguredCheck`
   - `OpsSettingsStoreReadyCheck`
+- central `OpsSettingsPage` workspace with vertical group tabs, readiness overview, status badges, preset application, JSON import/export helpers, and recent history presentation
+- expanded grouped settings surface for contact, brand, social, legal, and website-default defaults
+- curated searchable selects for locale, timezone, currency, date format, time format, and country code inside the operator workspace
+- region presets for `de`, `ch`, `at`, and `us`
+- manager helpers for grouped status summaries, public/internal/compliance payload partitions, exports, presets, and recent history access
+- doctor diagnostics:
+  - `OpsSettingsCompletenessCheck`
+  - `OpsSettingsConsistencyCheck`
+- `OpsSettingsHistoryReader` and `OpsSettingsValidator` for runtime-safe history access and normalized mutation validation
+- regression coverage for legacy settings-store compatibility, workspace payload helpers, schema select behavior, and recent-changes workspace rendering
 
 ### Changed
 
 - `OpsSettingsUpdated` now carries `oldValues` and `newValues` snapshots for changed keys
 - the package audit event definition now includes `old_values` and `new_values` context keys for persisted audit backends
 - package config publishing now registers `config/ops-settings.php` under the explicit `ops-settings-config` publish tag
+- settings mutations now normalize and validate approved values before persistence, including curated locale/currency/date/time defaults and stricter URL/email/color rules
+- recent workspace history is now presented as a compact table-style audit overview for operators
+- expanded settings classes now stay compatible with legacy stores by defaulting missing properties and backfilling missing approved keys on save
 
 ### Documentation
 
 - documented the optional audit configuration, doctor checks, expanded event payload, and the implemented `website:install --configure-audit --audit-package=*` flow in the package README
 - corrected the manual config publishing examples to use the real `ops-settings-config` tag
+- documented the current workspace UX, expanded grouped field surface, stronger validation rules, runtime payload helpers, region presets, and four registered doctor checks in the package README
 
 ## [0.1.0] - 2026-04-05
 
