@@ -132,8 +132,8 @@ class OpsSettingsPage extends Page
                         ->persistTabInQueryString('tab')
                         ->columnSpanFull(),
                     Section::make('Recent Changes')
-                        ->description('Latest package-owned audit entries for settings updates. Use this as a quick operator-facing activity view before opening deeper audits.')
-                        ->schema($this->recentHistorySections()),
+                        ->description('Latest package-owned audit entries for settings updates in a compact table-style overview for operators.')
+                        ->schema($this->recentHistoryTable()),
                 ]),
         ]);
     }
@@ -441,9 +441,9 @@ class OpsSettingsPage extends Page
     }
 
     /**
-     * @return array<int, Section>
+     * @return array<int, Grid|Section>
      */
-    private function recentHistorySections(): array
+    private function recentHistoryTable(): array
     {
         $history = $this->manager()->recentHistory(limit: (int) config('ops-settings.workspace.history_limit', 20));
 
@@ -455,23 +455,52 @@ class OpsSettingsPage extends Page
             ];
         }
 
-        return $history
+        return array_merge([
+            Grid::make(12)
+                ->schema([
+                    Text::make('Group')
+                        ->badge()
+                        ->color('gray')
+                        ->columnSpan(2),
+                    Text::make('Changed Keys')
+                        ->badge()
+                        ->color('gray')
+                        ->columnSpan(4),
+                    Text::make('Actor / Source')
+                        ->badge()
+                        ->color('gray')
+                        ->columnSpan(3),
+                    Text::make('Updated At')
+                        ->badge()
+                        ->color('gray')
+                        ->columnSpan(3),
+                ]),
+        ], $history
             ->take(6)
-            ->map(function (array $entry): Section {
+            ->map(function (array $entry): Grid {
                 $group = is_string($entry['group'] ?? null)
                     ? OpsSettingsGroup::fromValue((string) $entry['group'])
                     : null;
 
-                return Section::make($group?->label() ?? 'Unknown group')
-                    ->description($this->historyDescription($entry))
+                return Grid::make(12)
                     ->schema([
-                        Text::make($this->historyChangedKeysLine($entry))
+                        Text::make($group?->label() ?? 'Unknown group')
                             ->badge()
-                            ->color('gray'),
+                            ->color($group === null ? 'gray' : 'info')
+                            ->columnSpan(2),
+                        Text::make($this->historyChangedKeysValue($entry))
+                            ->color('gray')
+                            ->columnSpan(4),
+                        Text::make($this->historyActorSourceLine($entry))
+                            ->color('gray')
+                            ->columnSpan(3),
+                        Text::make($this->historyTimestampLine($entry))
+                            ->color('gray')
+                            ->columnSpan(3),
                     ]);
             })
             ->values()
-            ->all();
+            ->all());
     }
 
     /**
@@ -536,23 +565,7 @@ class OpsSettingsPage extends Page
     /**
      * @param  array<string, mixed>  $entry
      */
-    private function historyDescription(array $entry): string
-    {
-        $createdAt = $entry['created_at'] ?? null;
-        $source = $entry['source'] ?? 'unknown source';
-        $actorId = $entry['actor_id'] ?? 'system';
-
-        if ($createdAt instanceof \DateTimeInterface) {
-            return sprintf('Updated by %s via %s at %s', (string) $actorId, (string) $source, $createdAt->format('Y-m-d H:i'));
-        }
-
-        return sprintf('Updated by %s via %s', (string) $actorId, (string) $source);
-    }
-
-    /**
-     * @param  array<string, mixed>  $entry
-     */
-    private function historyChangedKeysLine(array $entry): string
+    private function historyChangedKeysValue(array $entry): string
     {
         $keys = $entry['changed_keys'] ?? [];
 
@@ -560,7 +573,32 @@ class OpsSettingsPage extends Page
             return 'No changed keys recorded';
         }
 
-        return 'Changed: '.implode(', ', $keys);
+        return implode(', ', $keys);
+    }
+
+    /**
+     * @param  array<string, mixed>  $entry
+     */
+    private function historyActorSourceLine(array $entry): string
+    {
+        $source = $entry['source'] ?? 'unknown source';
+        $actorId = $entry['actor_id'] ?? 'system';
+
+        return sprintf('%s via %s', (string) $actorId, (string) $source);
+    }
+
+    /**
+     * @param  array<string, mixed>  $entry
+     */
+    private function historyTimestampLine(array $entry): string
+    {
+        $createdAt = $entry['created_at'] ?? null;
+
+        if ($createdAt instanceof \DateTimeInterface) {
+            return $createdAt->format('Y-m-d H:i');
+        }
+
+        return 'Unknown time';
     }
 
     private function badgeColorForStatus(string $status): string
