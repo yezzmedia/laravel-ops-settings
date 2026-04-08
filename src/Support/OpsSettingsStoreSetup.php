@@ -17,12 +17,26 @@ use YezzMedia\OpsSettings\OpsSettingsServiceProvider;
  */
 class OpsSettingsStoreSetup
 {
+    private ?bool $settingsTableExistsMemo = null;
+
+    private ?bool $migrationsTableExistsMemo = null;
+
+    /**
+     * @var array<int, string>|null
+     */
+    private ?array $publishableMigrationNamesMemo = null;
+
+    /**
+     * @var array<int, string>|null
+     */
+    private ?array $appliedMigrationNamesMemo = null;
+
     /**
      * Checks whether the base settings table (from spatie/laravel-settings) exists.
      */
     public function settingsTableExists(): bool
     {
-        return Schema::hasTable('settings');
+        return $this->settingsTableExistsMemo ??= Schema::hasTable('settings');
     }
 
     /**
@@ -49,11 +63,11 @@ class OpsSettingsStoreSetup
      */
     public function hasPendingMigrations(): bool
     {
-        if (! Schema::hasTable('migrations')) {
+        if (! $this->migrationsTableExists()) {
             return $this->migrationsPublished();
         }
 
-        $applied = $this->appliedMigrationNames();
+        $applied = $this->appliedMigrationNames(migrationsTableExists: true);
         $publishedPath = database_path('migrations');
 
         foreach ($this->publishableMigrationNames() as $name) {
@@ -97,6 +111,8 @@ class OpsSettingsStoreSetup
         }
 
         Artisan::call('vendor:publish', $options);
+
+        $this->publishableMigrationNamesMemo = null;
     }
 
     public function configPublished(): bool
@@ -148,6 +164,10 @@ class OpsSettingsStoreSetup
     public function runMigrations(): void
     {
         Artisan::call('migrate', ['--force' => true]);
+
+        $this->settingsTableExistsMemo = null;
+        $this->migrationsTableExistsMemo = null;
+        $this->appliedMigrationNamesMemo = null;
     }
 
     /**
@@ -157,7 +177,7 @@ class OpsSettingsStoreSetup
      */
     private function publishableMigrationNames(): array
     {
-        return [
+        return $this->publishableMigrationNamesMemo ??= [
             'add_operator_identity_settings',
             'add_platform_contact_settings',
             'add_platform_brand_settings',
@@ -173,15 +193,24 @@ class OpsSettingsStoreSetup
      *
      * @return array<int, string>
      */
-    private function appliedMigrationNames(): array
+    private function appliedMigrationNames(bool $migrationsTableExists = false): array
     {
-        if (! Schema::hasTable('migrations')) {
-            return [];
+        if (is_array($this->appliedMigrationNamesMemo)) {
+            return $this->appliedMigrationNamesMemo;
         }
 
-        return DB::table('migrations')
+        if (! $migrationsTableExists && ! $this->migrationsTableExists()) {
+            return $this->appliedMigrationNamesMemo = [];
+        }
+
+        return $this->appliedMigrationNamesMemo = DB::table('migrations')
             ->pluck('migration')
             ->values()
             ->all();
+    }
+
+    private function migrationsTableExists(): bool
+    {
+        return $this->migrationsTableExistsMemo ??= Schema::hasTable('migrations');
     }
 }

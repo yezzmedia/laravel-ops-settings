@@ -18,6 +18,8 @@ use YezzMedia\OpsSettings\Doctor\OpsSettingsAuditConfiguredCheck;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsCompletenessCheck;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsConsistencyCheck;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsStoreReadyCheck;
+use YezzMedia\OpsSettings\Events\OpsSettingsSnapshotExported;
+use YezzMedia\OpsSettings\Events\OpsSettingsSnapshotImported;
 use YezzMedia\OpsSettings\Events\OpsSettingsUpdated;
 use YezzMedia\OpsSettings\Install\ConfigureOpsSettingsAuditInstallStep;
 use YezzMedia\OpsSettings\Listeners\OpsSettingsAuditListener;
@@ -92,6 +94,8 @@ class OpsSettingsServiceProvider extends PackageServiceProvider
     private function registerAuditListeners(Dispatcher $events): void
     {
         $events->listen(OpsSettingsUpdated::class, [OpsSettingsAuditListener::class, 'handleSettingsUpdated']);
+        $events->listen(OpsSettingsSnapshotExported::class, [OpsSettingsAuditListener::class, 'handleSnapshotExported']);
+        $events->listen(OpsSettingsSnapshotImported::class, [OpsSettingsAuditListener::class, 'handleSnapshotImported']);
     }
 
     private function makeAuditWriter(): OpsSettingsAuditWriter

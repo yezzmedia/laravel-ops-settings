@@ -8,6 +8,7 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions;
@@ -22,11 +23,15 @@ use Filament\Schemas\Schema;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use JsonException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use UnitEnum;
 use YezzMedia\OpsSettings\Actions\UpdateOpsSettingsAction;
+use YezzMedia\OpsSettings\Events\OpsSettingsSnapshotExported;
+use YezzMedia\OpsSettings\Events\OpsSettingsSnapshotImported;
 use YezzMedia\OpsSettings\Support\OpsSettingsGroup;
 use YezzMedia\OpsSettings\Support\OpsSettingsManager;
 use YezzMedia\OpsSettings\Support\OpsSettingsPageSchema;
@@ -64,6 +69,9 @@ class OpsSettingsPage extends Page
     }
 
     public array $data = [];
+
+    /** @var array<string, array<string, mixed>>|null */
+    private ?array $groupStatuses = null;
 
     public function mount(): void
     {
@@ -141,6 +149,27 @@ class OpsSettingsPage extends Page
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('confirmPassword')
+                ->label('Confirm Password')
+                ->icon('heroicon-o-lock-closed')
+                ->visible(Gate::check('ops.settings.manage'))
+                ->modalHeading('Confirm Password')
+                ->modalDescription('Confirm your current password before applying destructive settings changes in this workspace.')
+                ->schema([
+                    TextInput::make('current_password')
+                        ->label('Current Password')
+                        ->password()
+                        ->required(),
+                ])
+                ->action(function (array $data): void {
+                    $password = Arr::get($data, 'current_password');
+
+                    if (! is_string($password) || $password === '') {
+                        return;
+                    }
+
+                    $this->confirmPassword($password);
+                }),
             Action::make('applyPreset')
                 ->label('Apply Region Preset')
                 ->icon('heroicon-o-map')
@@ -162,11 +191,7 @@ class OpsSettingsPage extends Page
             Action::make('exportSnapshot')
                 ->label('Export Snapshot')
                 ->icon('heroicon-o-arrow-down-tray')
-                ->action(fn () => response()->streamDownload(function (): void {
-                    echo json_encode($this->manager()->exportSnapshot(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-                }, 'ops-settings-snapshot.json', [
-                    'Content-Type' => 'application/json',
-                ])),
+                ->action(fn (): StreamedResponse => $this->exportSnapshot()),
             Action::make('importSnapshot')
                 ->label('Import Snapshot')
                 ->icon('heroicon-o-arrow-up-tray')
@@ -283,10 +308,51 @@ class OpsSettingsPage extends Page
         return $tabs;
     }
 
+    public function confirmPassword(string $password): bool
+    {
+        $user = Auth::user();
+
+        if ($user === null || ! method_exists($user, 'getAuthPassword')) {
+            Notification::make()
+                ->title('Password confirmation is unavailable.')
+                ->body('An authenticated user with a stored password is required before destructive settings actions can run.')
+                ->danger()
+                ->send();
+
+            return false;
+        }
+
+        $hashedPassword = $user->getAuthPassword();
+
+        if (! is_string($hashedPassword) || $hashedPassword === '' || ! Hash::check($password, $hashedPassword)) {
+            Notification::make()
+                ->title('Password confirmation failed.')
+                ->body('The provided current password did not match the active operator account.')
+                ->danger()
+                ->send();
+
+            return false;
+        }
+
+        session()->put($this->passwordConfirmationSessionKey(), now()->getTimestamp());
+
+        Notification::make()
+            ->title('Password confirmed.')
+            ->body('Destructive settings changes are temporarily unlocked for this workspace session.')
+            ->success()
+            ->send();
+
+        return true;
+    }
+
     private function saveGroup(OpsSettingsGroup $group): void
     {
         if (Gate::denies('ops.settings.manage')) {
             abort(403);
+        }
+
+        if (! $this->ensurePasswordConfirmed('save settings changes')) {
+            return;
         }
 
         app(UpdateOpsSettingsAction::class)->execute(
@@ -342,8 +408,12 @@ class OpsSettingsPage extends Page
             ->implode(' | ');
     }
 
-    private function applyPreset(string $preset): void
+    public function applyPreset(string $preset): void
     {
+        if (! $this->ensurePasswordConfirmed('apply a region preset')) {
+            return;
+        }
+
         $values = $this->manager()->presetValues($preset);
 
         if ($values === []) {
@@ -370,8 +440,31 @@ class OpsSettingsPage extends Page
             ->send();
     }
 
-    private function importSnapshot(string $snapshot): void
+    public function exportSnapshot(): StreamedResponse
     {
+        $snapshot = $this->manager()->exportSnapshot();
+
+        event(new OpsSettingsSnapshotExported(
+            completionPercent: (int) ($snapshot['completion_percent'] ?? 0),
+            groupCount: count($snapshot['groups'] ?? []),
+            actorId: Auth::id(),
+            exportedAt: (string) ($snapshot['exported_at'] ?? now()->toIso8601String()),
+            source: 'ops_panel',
+        ));
+
+        return response()->streamDownload(function () use ($snapshot): void {
+            echo json_encode($snapshot, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        }, 'ops-settings-snapshot.json', [
+            'Content-Type' => 'application/json',
+        ]);
+    }
+
+    public function importSnapshot(string $snapshot): void
+    {
+        if (! $this->ensurePasswordConfirmed('import a snapshot')) {
+            return;
+        }
+
         try {
             $decoded = json_decode($snapshot, true, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException) {
@@ -394,6 +487,8 @@ class OpsSettingsPage extends Page
             return;
         }
 
+        $importedGroups = [];
+
         foreach (OpsSettingsGroup::cases() as $group) {
             $payload = Arr::get($groups, $group->value);
 
@@ -401,11 +496,19 @@ class OpsSettingsPage extends Page
                 continue;
             }
 
+            $importedGroups[] = $group->value;
+
             $this->data[$group->value] = array_replace(
                 $this->data[$group->value] ?? [],
                 Arr::only($payload, $group->approvedProperties()),
             );
         }
+
+        event(new OpsSettingsSnapshotImported(
+            importedGroups: $importedGroups,
+            actorId: Auth::id(),
+            source: 'ops_panel',
+        ));
 
         Notification::make()
             ->title('Snapshot imported into the workspace.')
@@ -419,7 +522,7 @@ class OpsSettingsPage extends Page
      */
     private function statusCards(): array
     {
-        return collect($this->manager()->groupStatuses())
+        return collect($this->groupStatuses())
             ->map(function (array $status): Section {
                 $latestChange = $status['latest_change'];
 
@@ -508,7 +611,7 @@ class OpsSettingsPage extends Page
      */
     private function groupStatusDetails(OpsSettingsGroup $group): array
     {
-        $status = $this->manager()->groupStatuses()[$group->value] ?? [];
+        $status = $this->groupStatuses()[$group->value] ?? [];
 
         return [
             Text::make(sprintf('%d%% complete', (int) ($status['completion_percent'] ?? 0)))
@@ -624,14 +727,63 @@ class OpsSettingsPage extends Page
     private function refreshWorkspaceState(): void
     {
         $this->manager()->invalidateAll();
+        $this->groupStatuses = null;
 
         foreach (OpsSettingsGroup::cases() as $group) {
             $this->data[$group->value] = OpsSettingsPageSchema::currentData($this->manager(), $group);
         }
     }
 
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function groupStatuses(): array
+    {
+        if ($this->groupStatuses !== null) {
+            return $this->groupStatuses;
+        }
+
+        return $this->groupStatuses = $this->manager()->groupStatuses();
+    }
+
     private function manager(): OpsSettingsManager
     {
         return app(OpsSettingsManager::class);
+    }
+
+    private function ensurePasswordConfirmed(string $action): bool
+    {
+        if ($this->hasFreshPasswordConfirmation()) {
+            return true;
+        }
+
+        Notification::make()
+            ->title('Password confirmation required.')
+            ->body(sprintf('Confirm your current password before you can %s in the ops settings workspace.', $action))
+            ->warning()
+            ->send();
+
+        return false;
+    }
+
+    private function hasFreshPasswordConfirmation(): bool
+    {
+        $confirmedAt = session()->get($this->passwordConfirmationSessionKey());
+
+        if (! is_int($confirmedAt) && ! ctype_digit((string) $confirmedAt)) {
+            return false;
+        }
+
+        return ((int) $confirmedAt + $this->passwordConfirmationTimeout()) >= now()->getTimestamp();
+    }
+
+    private function passwordConfirmationTimeout(): int
+    {
+        return (int) config('ops-settings.security.password_confirmation.timeout', 900);
+    }
+
+    private function passwordConfirmationSessionKey(): string
+    {
+        return 'ops-settings.password_confirmation.confirmed_at';
     }
 }

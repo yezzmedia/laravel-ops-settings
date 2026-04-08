@@ -7,6 +7,8 @@ namespace YezzMedia\OpsSettings;
 use YezzMedia\Foundation\Contracts\DefinesAuditEvents;
 use YezzMedia\Foundation\Contracts\DefinesInstallSteps;
 use YezzMedia\Foundation\Contracts\DefinesPermissions;
+use YezzMedia\Foundation\Contracts\DefinesSecurityRequests;
+use YezzMedia\Foundation\Contracts\DefinesSecurityRequirements;
 use YezzMedia\Foundation\Contracts\PlatformPackage;
 use YezzMedia\Foundation\Contracts\ProvidesDoctorChecks;
 use YezzMedia\Foundation\Contracts\ProvidesOpsModules;
@@ -16,6 +18,8 @@ use YezzMedia\Foundation\Data\FeatureDefinition;
 use YezzMedia\Foundation\Data\OpsModuleDefinition;
 use YezzMedia\Foundation\Data\PackageMetadata;
 use YezzMedia\Foundation\Data\PermissionDefinition;
+use YezzMedia\Foundation\Data\SecurityRequestDefinition;
+use YezzMedia\Foundation\Data\SecurityRequirementDefinition;
 use YezzMedia\Foundation\Doctor\DoctorCheck;
 use YezzMedia\Foundation\Install\InstallStep;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsAuditConfiguredCheck;
@@ -30,7 +34,7 @@ use YezzMedia\OpsSettings\Install\SeedOpsSettingsDefaultsInstallStep;
 /**
  * Describes the ops-settings package surface that foundation should register.
  */
-final class OpsSettingsPlatformPackage implements DefinesAuditEvents, DefinesInstallSteps, DefinesPermissions, PlatformPackage, ProvidesDoctorChecks, ProvidesOpsModules, RegistersFeatures
+final class OpsSettingsPlatformPackage implements DefinesAuditEvents, DefinesInstallSteps, DefinesPermissions, DefinesSecurityRequests, DefinesSecurityRequirements, PlatformPackage, ProvidesDoctorChecks, ProvidesOpsModules, RegistersFeatures
 {
     public function metadata(): PackageMetadata
     {
@@ -123,6 +127,24 @@ final class OpsSettingsPlatformPackage implements DefinesAuditEvents, DefinesIns
                 severity: 'warning',
                 contextKeys: ['group', 'changed_keys', 'actor_id', 'old_values', 'new_values', 'context', 'source'],
             ),
+            new AuditEventDefinition(
+                key: 'ops.settings.snapshot_exported',
+                package: 'yezzmedia/laravel-ops-settings',
+                action: 'exported',
+                subjectType: 'ops_settings_snapshot',
+                description: 'An ops settings snapshot was exported.',
+                severity: 'info',
+                contextKeys: ['completion_percent', 'group_count', 'actor_id', 'exported_at', 'source'],
+            ),
+            new AuditEventDefinition(
+                key: 'ops.settings.snapshot_imported',
+                package: 'yezzmedia/laravel-ops-settings',
+                action: 'imported',
+                subjectType: 'ops_settings_snapshot',
+                description: 'An ops settings snapshot was imported into the workspace.',
+                severity: 'info',
+                contextKeys: ['imported_groups', 'imported_group_count', 'actor_id', 'source'],
+            ),
         ];
     }
 
@@ -164,6 +186,53 @@ final class OpsSettingsPlatformPackage implements DefinesAuditEvents, DefinesIns
             new OpsModuleDefinition('content.settings.social', 'yezzmedia/laravel-ops-settings', 'Social', 'page', 'ops.settings.view'),
             new OpsModuleDefinition('content.settings.legal', 'yezzmedia/laravel-ops-settings', 'Legal', 'page', 'ops.settings.view'),
             new OpsModuleDefinition('content.settings.website_defaults', 'yezzmedia/laravel-ops-settings', 'Website Defaults', 'page', 'ops.settings.view'),
+        ];
+    }
+
+    /**
+     * @return array<int, SecurityRequestDefinition>
+     */
+    public function securityRequestDefinitions(): array
+    {
+        return [
+            new SecurityRequestDefinition(
+                key: 'ops-settings.request.auth.password-confirmation',
+                package: 'yezzmedia/laravel-ops-settings',
+                domain: 'auth',
+                control: 'password_confirmation',
+                scope: 'destructive-settings',
+                requestedLevel: 'required',
+                requestedEnforcementMode: 'package_owned',
+                description: 'Critical ops settings mutations should require password confirmation before destructive actions run.',
+                payloadSchema: [
+                    'surface' => 'Ops settings page or action surface.',
+                    'action' => 'Mutation action name.',
+                    'permission' => 'Required permission for the action.',
+                ],
+                allowedPreviewFields: ['surface', 'action', 'permission'],
+                notes: 'Action-level confirmation remains package-owned while ops-security verifies that the declared hardening exists.',
+            ),
+        ];
+    }
+
+    /**
+     * @return array<int, SecurityRequirementDefinition>
+     */
+    public function securityRequirementDefinitions(): array
+    {
+        return [
+            new SecurityRequirementDefinition(
+                key: 'ops-settings.auth.password-confirmation',
+                package: 'yezzmedia/laravel-ops-settings',
+                domain: 'auth',
+                control: 'password_confirmation',
+                level: 'required',
+                scope: 'destructive-settings',
+                description: 'Destructive ops settings changes should require explicit password confirmation.',
+                enforcementMode: 'package_owned',
+                appliesTo: ['settings-mutations', 'snapshot-import', 'preset-apply'],
+                notes: 'The verification layer may report missing protection, but the confirmation UX stays near the mutating ops-settings actions.',
+            ),
         ];
     }
 }

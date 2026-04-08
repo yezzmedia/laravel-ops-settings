@@ -30,6 +30,17 @@ class OpsSettingsManager
     /** @var array<string, mixed> Per-request memoization to prevent redundant cache/DB hits. */
     private array $memo = [];
 
+    /** @var array<string, array<int, string>>|null */
+    private ?array $missingRequiredFieldsMemo = null;
+
+    /** @var array<string, array<string, mixed>>|null */
+    private ?array $groupStatusesMemo = null;
+
+    private ?int $completionPercentMemo = null;
+
+    /** @var array<string, Collection<int, array<string, mixed>>> */
+    private array $recentHistoryMemo = [];
+
     public function __construct(
         private readonly CacheFactory $cacheFactory,
         private readonly OpsSettingsHistoryReader $historyReader,
@@ -152,6 +163,10 @@ class OpsSettingsManager
      */
     public function missingRequiredFields(): array
     {
+        if ($this->missingRequiredFieldsMemo !== null) {
+            return $this->missingRequiredFieldsMemo;
+        }
+
         $missing = [];
 
         foreach (OpsSettingsGroup::cases() as $group) {
@@ -166,7 +181,7 @@ class OpsSettingsManager
             }
         }
 
-        return $missing;
+        return $this->missingRequiredFieldsMemo = $missing;
     }
 
     public function isComplete(): bool
@@ -179,8 +194,13 @@ class OpsSettingsManager
      */
     public function groupStatuses(): array
     {
+        if ($this->groupStatusesMemo !== null) {
+            return $this->groupStatusesMemo;
+        }
+
         $missing = $this->missingRequiredFields();
         $statuses = [];
+        $latestChanges = $this->historyReader->latestForGroups(OpsSettingsGroup::cases());
 
         foreach (OpsSettingsGroup::cases() as $group) {
             $approved = $group->approvedProperties();
@@ -199,22 +219,26 @@ class OpsSettingsManager
                 'approved_total' => count($approved),
                 'completion_percent' => count($approved) === 0 ? 100 : (int) round(($filledCount / count($approved)) * 100),
                 'status' => isset($missing[$group->value]) ? 'incomplete' : ($filledCount === 0 ? 'empty' : 'ready'),
-                'latest_change' => $this->historyReader->latestForGroup($group),
+                'latest_change' => $latestChanges[$group->value] ?? null,
             ];
         }
 
-        return $statuses;
+        return $this->groupStatusesMemo = $statuses;
     }
 
     public function completionPercent(): int
     {
+        if ($this->completionPercentMemo !== null) {
+            return $this->completionPercentMemo;
+        }
+
         $statuses = $this->groupStatuses();
 
         if ($statuses === []) {
-            return 100;
+            return $this->completionPercentMemo = 100;
         }
 
-        return (int) round(collect($statuses)->avg('completion_percent'));
+        return $this->completionPercentMemo = (int) round(collect($statuses)->avg('completion_percent'));
     }
 
     /**
@@ -311,7 +335,13 @@ class OpsSettingsManager
      */
     public function recentHistory(?OpsSettingsGroup $group = null, int $limit = 20): Collection
     {
-        return $this->historyReader->recent($group, $limit);
+        $memoKey = sprintf('%s:%d', $group?->value ?? 'all', $limit);
+
+        if (isset($this->recentHistoryMemo[$memoKey])) {
+            return $this->recentHistoryMemo[$memoKey];
+        }
+
+        return $this->recentHistoryMemo[$memoKey] = $this->historyReader->recent($group, $limit);
     }
 
     /**
@@ -322,6 +352,7 @@ class OpsSettingsManager
     {
         unset($this->memo[$group->value]);
         $this->cacheRepository->forget($group->cacheKey());
+        $this->flushDerivedMemo();
     }
 
     /**
@@ -332,6 +363,16 @@ class OpsSettingsManager
         foreach (OpsSettingsGroup::cases() as $group) {
             $this->invalidate($group);
         }
+
+        $this->flushDerivedMemo();
+    }
+
+    private function flushDerivedMemo(): void
+    {
+        $this->missingRequiredFieldsMemo = null;
+        $this->groupStatusesMemo = null;
+        $this->completionPercentMemo = null;
+        $this->recentHistoryMemo = [];
     }
 
     /**

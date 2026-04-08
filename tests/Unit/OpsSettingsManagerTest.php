@@ -226,3 +226,58 @@ it('replaces invalid cached payloads with fresh typed settings data', function (
             'platform_label' => null,
         ]);
 });
+
+it('memoizes grouped statuses and batches latest history lookups', function (): void {
+    if (! Schema::hasTable('activity_log')) {
+        Schema::create('activity_log', static function (Blueprint $table): void {
+            $table->id();
+            $table->string('log_name')->nullable();
+            $table->text('description');
+            $table->nullableMorphs('subject');
+            $table->nullableMorphs('causer');
+            $table->string('event')->nullable();
+            $table->json('properties')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    DB::table('activity_log')->insert([
+        [
+            'log_name' => 'ops_settings',
+            'description' => 'ops.settings.updated',
+            'event' => 'ops.settings.updated',
+            'properties' => json_encode([
+                'group' => 'identity',
+                'changed_keys' => ['name'],
+                'source' => 'test',
+            ]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+        [
+            'log_name' => 'ops_settings',
+            'description' => 'ops.settings.updated',
+            'event' => 'ops.settings.updated',
+            'properties' => json_encode([
+                'group' => 'contact',
+                'changed_keys' => ['support_email'],
+                'source' => 'test',
+            ]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    ]);
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+
+    $manager = app(OpsSettingsManager::class);
+    $first = $manager->groupStatuses();
+    $second = $manager->groupStatuses();
+
+    $queries = collect(DB::getQueryLog())->pluck('query');
+
+    expect($first['identity']['latest_change']['source'])->toBe('test')
+        ->and($second['contact']['latest_change']['source'])->toBe('test')
+        ->and($queries->filter(fn (string $query): bool => str_contains($query, 'activity_log'))->count())->toBe(2);
+});
