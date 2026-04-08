@@ -123,6 +123,24 @@ final class OpsSettingsPlatformPackage implements DefinesAuditEvents, DefinesIns
                 severity: 'warning',
                 contextKeys: ['group', 'changed_keys', 'actor_id', 'old_values', 'new_values', 'context', 'source'],
             ),
+            new AuditEventDefinition(
+                key: 'ops.settings.snapshot_exported',
+                package: 'yezzmedia/laravel-ops-settings',
+                action: 'exported',
+                subjectType: 'ops_settings_snapshot',
+                description: 'An ops settings snapshot was exported.',
+                severity: 'info',
+                contextKeys: ['completion_percent', 'group_count', 'actor_id', 'exported_at', 'source'],
+            ),
+            new AuditEventDefinition(
+                key: 'ops.settings.snapshot_imported',
+                package: 'yezzmedia/laravel-ops-settings',
+                action: 'imported',
+                subjectType: 'ops_settings_snapshot',
+                description: 'An ops settings snapshot was imported into the workspace.',
+                severity: 'info',
+                contextKeys: ['imported_groups', 'imported_group_count', 'actor_id', 'source'],
+            ),
         ];
     }
 

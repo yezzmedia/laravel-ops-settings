@@ -25,8 +25,11 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use JsonException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use UnitEnum;
 use YezzMedia\OpsSettings\Actions\UpdateOpsSettingsAction;
+use YezzMedia\OpsSettings\Events\OpsSettingsSnapshotExported;
+use YezzMedia\OpsSettings\Events\OpsSettingsSnapshotImported;
 use YezzMedia\OpsSettings\Support\OpsSettingsGroup;
 use YezzMedia\OpsSettings\Support\OpsSettingsManager;
 use YezzMedia\OpsSettings\Support\OpsSettingsPageSchema;
@@ -162,11 +165,7 @@ class OpsSettingsPage extends Page
             Action::make('exportSnapshot')
                 ->label('Export Snapshot')
                 ->icon('heroicon-o-arrow-down-tray')
-                ->action(fn () => response()->streamDownload(function (): void {
-                    echo json_encode($this->manager()->exportSnapshot(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-                }, 'ops-settings-snapshot.json', [
-                    'Content-Type' => 'application/json',
-                ])),
+                ->action(fn (): StreamedResponse => $this->exportSnapshot()),
             Action::make('importSnapshot')
                 ->label('Import Snapshot')
                 ->icon('heroicon-o-arrow-up-tray')
@@ -370,7 +369,26 @@ class OpsSettingsPage extends Page
             ->send();
     }
 
-    private function importSnapshot(string $snapshot): void
+    public function exportSnapshot(): StreamedResponse
+    {
+        $snapshot = $this->manager()->exportSnapshot();
+
+        event(new OpsSettingsSnapshotExported(
+            completionPercent: (int) ($snapshot['completion_percent'] ?? 0),
+            groupCount: count($snapshot['groups'] ?? []),
+            actorId: Auth::id(),
+            exportedAt: (string) ($snapshot['exported_at'] ?? now()->toIso8601String()),
+            source: 'ops_panel',
+        ));
+
+        return response()->streamDownload(function () use ($snapshot): void {
+            echo json_encode($snapshot, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        }, 'ops-settings-snapshot.json', [
+            'Content-Type' => 'application/json',
+        ]);
+    }
+
+    public function importSnapshot(string $snapshot): void
     {
         try {
             $decoded = json_decode($snapshot, true, 512, JSON_THROW_ON_ERROR);
@@ -394,6 +412,8 @@ class OpsSettingsPage extends Page
             return;
         }
 
+        $importedGroups = [];
+
         foreach (OpsSettingsGroup::cases() as $group) {
             $payload = Arr::get($groups, $group->value);
 
@@ -401,11 +421,19 @@ class OpsSettingsPage extends Page
                 continue;
             }
 
+            $importedGroups[] = $group->value;
+
             $this->data[$group->value] = array_replace(
                 $this->data[$group->value] ?? [],
                 Arr::only($payload, $group->approvedProperties()),
             );
         }
+
+        event(new OpsSettingsSnapshotImported(
+            importedGroups: $importedGroups,
+            actorId: Auth::id(),
+            source: 'ops_panel',
+        ));
 
         Notification::make()
             ->title('Snapshot imported into the workspace.')

@@ -117,11 +117,25 @@ it('describes the approved bootstrap surface', function (): void {
             'content.settings.website_defaults',
         ])
         ->and($opsModules->pluck('permissionHint')->unique()->values()->all())->toBe(['ops.settings.view'])
-        ->and($auditEvents->keys()->all())->toBe(['ops.settings.updated'])
+        ->and($auditEvents->keys()->all())->toBe([
+            'ops.settings.updated',
+            'ops.settings.snapshot_exported',
+            'ops.settings.snapshot_imported',
+        ])
         ->and($auditEvents->get('ops.settings.updated')?->contextKeys)->toBe([
             'group', 'changed_keys', 'actor_id', 'old_values', 'new_values', 'context', 'source',
         ])
+        ->and($auditEvents->get('ops.settings.snapshot_exported')?->contextKeys)->toBe([
+            'completion_percent', 'group_count', 'actor_id', 'exported_at', 'source',
+        ])
+        ->and($auditEvents->get('ops.settings.snapshot_imported')?->contextKeys)->toBe([
+            'imported_groups', 'imported_group_count', 'actor_id', 'source',
+        ])
         ->and($auditEvents->get('ops.settings.updated')?->action)->toBe('updated')
+        ->and($auditEvents->get('ops.settings.snapshot_exported')?->action)->toBe('exported')
+        ->and($auditEvents->get('ops.settings.snapshot_imported')?->action)->toBe('imported')
         ->and($auditEvents->get('ops.settings.updated')?->subjectType)->toBe('ops_settings')
+        ->and($auditEvents->get('ops.settings.snapshot_exported')?->subjectType)->toBe('ops_settings_snapshot')
+        ->and($auditEvents->get('ops.settings.snapshot_imported')?->subjectType)->toBe('ops_settings_snapshot')
         ->and($auditEvents->get('ops.settings.updated')?->severity)->toBe('warning');
 });
