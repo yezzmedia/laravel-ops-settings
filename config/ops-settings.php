@@ -49,6 +49,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Security Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Controls package-owned confirmation requirements for destructive settings
+    | mutations. The confirmation lives in the ops-settings page flow and keeps
+    | mutation hardening close to the action surface.
+    |
+    */
+
+    'security' => [
+        'password_confirmation' => [
+            'timeout' => 900,
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Workspace Configuration
     |--------------------------------------------------------------------------
     |

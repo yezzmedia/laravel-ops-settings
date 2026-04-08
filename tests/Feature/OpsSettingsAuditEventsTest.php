@@ -2,12 +2,29 @@
 
 declare(strict_types=1);
 
+use Illuminate\Foundation\Auth\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Hash;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use YezzMedia\OpsSettings\Events\OpsSettingsSnapshotExported;
 use YezzMedia\OpsSettings\Events\OpsSettingsSnapshotImported;
 use YezzMedia\OpsSettings\Filament\Pages\OpsSettingsPage;
+
+function auditEventTestOpsSettingsUser(string $password = 'secret'): User
+{
+    $user = new class extends User {};
+
+    $user->forceFill([
+        'id' => 77,
+        'name' => 'Audit Event Tester',
+        'email' => 'audit@example.com',
+        'password' => Hash::make($password),
+    ]);
+
+    return $user;
+}
 
 it('dispatches a package-owned audit event when exporting a snapshot', function (): void {
     Event::fake([OpsSettingsSnapshotExported::class]);
@@ -32,9 +49,14 @@ it('dispatches a package-owned audit event when importing a snapshot', function 
     Event::fake([OpsSettingsSnapshotImported::class]);
 
     Gate::define('ops.settings.view', fn ($user = null) => true);
+    Gate::define('ops.settings.manage', fn ($user = null) => true);
+
+    Auth::guard('web')->setUser(auditEventTestOpsSettingsUser());
 
     $page = app(OpsSettingsPage::class);
     $page->mount();
+
+    expect($page->confirmPassword('secret'))->toBeTrue();
 
     $page->importSnapshot(json_encode([
         'groups' => [

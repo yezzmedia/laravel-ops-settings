@@ -5,6 +5,8 @@ declare(strict_types=1);
 use YezzMedia\Foundation\Contracts\DefinesAuditEvents;
 use YezzMedia\Foundation\Contracts\DefinesInstallSteps;
 use YezzMedia\Foundation\Contracts\DefinesPermissions;
+use YezzMedia\Foundation\Contracts\DefinesSecurityRequests;
+use YezzMedia\Foundation\Contracts\DefinesSecurityRequirements;
 use YezzMedia\Foundation\Contracts\PlatformPackage;
 use YezzMedia\Foundation\Contracts\ProvidesDoctorChecks;
 use YezzMedia\Foundation\Contracts\ProvidesOpsModules;
@@ -14,6 +16,8 @@ use YezzMedia\Foundation\Registry\FeatureRegistry;
 use YezzMedia\Foundation\Registry\OpsModuleRegistry;
 use YezzMedia\Foundation\Registry\PackageRegistry;
 use YezzMedia\Foundation\Registry\PermissionRegistry;
+use YezzMedia\Foundation\Registry\SecurityRequestRegistry;
+use YezzMedia\Foundation\Registry\SecurityRequirementRegistry;
 use YezzMedia\OpsSettings\Actions\UpdateOpsSettingsAction;
 use YezzMedia\OpsSettings\Contracts\OpsSettingsAuditWriter;
 use YezzMedia\OpsSettings\Doctor\OpsSettingsAuditConfiguredCheck;
@@ -44,6 +48,12 @@ it('registers the ops-settings bootstrap bindings', function (): void {
         ->toHaveCount(6)
         ->and(app(OpsModuleRegistry::class)->forPackage('yezzmedia/laravel-ops-settings'))
         ->toHaveCount(6)
+        ->and(app(SecurityRequestRegistry::class)->forPackage('yezzmedia/laravel-ops-settings')->pluck('key')->all())->toBe([
+            'ops-settings.request.auth.password-confirmation',
+        ])
+        ->and(app(SecurityRequirementRegistry::class)->forPackage('yezzmedia/laravel-ops-settings')->pluck('key')->all())->toBe([
+            'ops-settings.auth.password-confirmation',
+        ])
         ->and($doctorResults->keys()->all())->toContain('audit_configured', 'settings_completeness', 'settings_consistency', 'settings_store_ready')
         ->and(app(OpsSettingsManager::class))->toBeInstanceOf(OpsSettingsManager::class)
         ->and(app(UpdateOpsSettingsAction::class))->toBeInstanceOf(UpdateOpsSettingsAction::class);
@@ -83,6 +93,8 @@ it('describes the approved bootstrap surface', function (): void {
         ->and($package)->toBeInstanceOf(DefinesPermissions::class)
         ->and($package)->toBeInstanceOf(DefinesAuditEvents::class)
         ->and($package)->toBeInstanceOf(DefinesInstallSteps::class)
+        ->and($package)->toBeInstanceOf(DefinesSecurityRequests::class)
+        ->and($package)->toBeInstanceOf(DefinesSecurityRequirements::class)
         ->and($package)->toBeInstanceOf(ProvidesDoctorChecks::class)
         ->and($package)->toBeInstanceOf(ProvidesOpsModules::class)
         ->and($package)->toBeInstanceOf(RegistersFeatures::class)
@@ -134,6 +146,12 @@ it('describes the approved bootstrap surface', function (): void {
         ->and($auditEvents->get('ops.settings.updated')?->action)->toBe('updated')
         ->and($auditEvents->get('ops.settings.snapshot_exported')?->action)->toBe('exported')
         ->and($auditEvents->get('ops.settings.snapshot_imported')?->action)->toBe('imported')
+        ->and(collect($package->securityRequestDefinitions())->pluck('key')->all())->toBe([
+            'ops-settings.request.auth.password-confirmation',
+        ])
+        ->and(collect($package->securityRequirementDefinitions())->pluck('key')->all())->toBe([
+            'ops-settings.auth.password-confirmation',
+        ])
         ->and($auditEvents->get('ops.settings.updated')?->subjectType)->toBe('ops_settings')
         ->and($auditEvents->get('ops.settings.snapshot_exported')?->subjectType)->toBe('ops_settings_snapshot')
         ->and($auditEvents->get('ops.settings.snapshot_imported')?->subjectType)->toBe('ops_settings_snapshot')
