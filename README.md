@@ -83,6 +83,18 @@ The workspace includes:
 
 The page keeps the legacy single-group pages registered as hidden deep-link compatibility pages, while the visible navigation surface now points at the central workspace.
 
+### Password confirmation workflow
+
+Destructive mutations inside the central workspace require explicit password confirmation.
+
+The current protected paths include:
+
+- group save actions through `saveIdentity()`, `saveContact()`, `saveBrand()`, `saveSocial()`, `saveLegal()`, and `saveWebsiteDefaults()`
+- preset application through `applyPreset`
+- snapshot import through `importSnapshot`
+
+`confirmPassword()` stores a session-scoped confirmation timestamp and honors `ops-settings.security.password_confirmation.timeout`.
+
 ## Configuration
 
 Publish the config file:
@@ -109,6 +121,12 @@ return [
     'workspace' => [
         'history_limit' => 20,                 // Maximum recent audit rows shown in the workspace
         'presets' => ['de', 'ch', 'at', 'us'], // Curated region presets available in the workspace
+    ],
+
+    'security' => [
+        'password_confirmation' => [
+            'timeout' => 900, // Seconds that one password confirmation stays valid in the workspace session
+        ],
     ],
 ];
 ```
@@ -311,6 +329,13 @@ Dispatched after every successful `UpdateOpsSettingsAction::execute()` call.
 
 The package defines the `ops.settings.updated` audit event through foundation metadata and writes persisted audit only when explicitly configured.
 
+It also defines security-governance metadata through foundation:
+
+- security request: `ops-settings.request.auth.password-confirmation`
+- security requirement: `ops-settings.auth.password-confirmation`
+
+The package keeps enforcement package-owned: `yezzmedia/laravel-ops-security` verifies that the confirmation workflow exists, but the actual confirmation UX remains on the ops-settings page.
+
 Audit writer behavior:
 
 - `ops-settings.audit.driver=null`: use `NullOpsSettingsAuditWriter`
@@ -324,7 +349,8 @@ The foundation audit installer updates package config only. It does not run the 
 
 The package registers four doctor checks through foundation:
 
-- `ops_settings_audit_configured`
+- `audit_configured`
+  - `skipped` when the host ops audit provider is not configured in the current environment
   - `passed` when `ops-settings.audit.driver=activitylog`
   - `warning` when persisted audit is intentionally disabled
   - `failed` when an unsupported audit driver is configured
@@ -334,9 +360,10 @@ The package registers four doctor checks through foundation:
 - `settings_consistency`
   - `passed` when core defaults are internally consistent
   - `warning` when conflicting defaults are detected, such as matching support/no-reply emails or identical default and fallback locales
-- `ops_settings_store_ready`
+- `settings_store_ready`
   - `passed` when the settings store is present and all published ops-settings migrations are applied
   - `failed` when the settings table or required migrations are missing
+  - `warning` when the settings table exists but published ops-settings migrations are still pending
 
 ## Permissions
 
