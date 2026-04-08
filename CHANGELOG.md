@@ -29,6 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `OpsSettingsConsistencyCheck`
 - `OpsSettingsHistoryReader` and `OpsSettingsValidator` for runtime-safe history access and normalized mutation validation
 - regression coverage for legacy settings-store compatibility, workspace payload helpers, schema select behavior, and recent-changes workspace rendering
+- security-governance declarations through foundation:
+  - `ops-settings.request.auth.password-confirmation`
+  - `ops-settings.auth.password-confirmation`
+- package-owned password confirmation workflow for destructive ops-settings mutations
+- snapshot export and import audit event definitions:
+  - `ops.settings.snapshot_exported`
+  - `ops.settings.snapshot_imported`
 
 ### Changed
 
@@ -38,12 +45,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - settings mutations now normalize and validate approved values before persistence, including curated locale/currency/date/time defaults and stricter URL/email/color rules
 - recent workspace history is now presented as a compact table-style audit overview for operators
 - expanded settings classes now stay compatible with legacy stores by defaulting missing properties and backfilling missing approved keys on save
+- destructive workspace mutations now require password confirmation for a bounded session timeout before save, preset apply, and snapshot import flows proceed
+- settings-store readiness now reuses the established migrations-table state across one evaluation flow to avoid duplicate readiness checks
 
 ### Documentation
 
 - documented the optional audit configuration, doctor checks, expanded event payload, and the implemented `website:install --configure-audit --audit-package=*` flow in the package README
 - corrected the manual config publishing examples to use the real `ops-settings-config` tag
 - documented the current workspace UX, expanded grouped field surface, stronger validation rules, runtime payload helpers, region presets, and four registered doctor checks in the package README
+- documented the password-confirmation timeout config, security-governance declarations, destructive-action protection, and corrected doctor-check keys and statuses in the package README
 
 ## [0.1.0] - 2026-04-05
 
