@@ -27,6 +27,9 @@
         "pestphp/pest": "^4.0",
         "pestphp/pest-plugin-laravel": "^4.0"
     },
+    "suggest": {
+        "spatie/laravel-activitylog": "Optional audit persistence driver for ops settings audit events."
+    },
     "autoload": {
         "psr-4": {
             "YezzMedia\\OpsSettings\\": "src/"
