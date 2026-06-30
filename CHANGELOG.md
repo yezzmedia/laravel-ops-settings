@@ -55,6 +55,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - documented the current workspace UX, expanded grouped field surface, stronger validation rules, runtime payload helpers, region presets, and four registered doctor checks in the package README
 - documented the password-confirmation timeout config, security-governance declarations, destructive-action protection, and corrected doctor-check keys and statuses in the package README
 
+## [0.2.0] - 2026-06-30
+
+### Changed
+
+- Bumped minimum `yezzmedia/laravel-foundation` dependency to `^0.2`
+
 ## [0.1.0] - 2026-04-05
 
 ### Added

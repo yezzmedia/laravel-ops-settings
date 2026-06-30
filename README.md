@@ -1,8 +1,27 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/yezzmedia/.github/main/profile/yezzmedia-dark.svg">
+    <img src="https://raw.githubusercontent.com/yezzmedia/.github/main/profile/yezzmedia-light.svg" alt="Yezz Media" height="40">
+  </picture>
+</p>
+
+<p align="center">
+  <a href="https://packagist.org/packages/yezzmedia/laravel-ops-settings"><img src="https://img.shields.io/packagist/v/yezzmedia/laravel-ops-settings?style=flat-square" alt="Latest Version"></a>
+  <a href="https://packagist.org/packages/yezzmedia/laravel-ops-settings"><img src="https://img.shields.io/packagist/php-v/yezzmedia/laravel-ops-settings?style=flat-square" alt="PHP Version"></a>
+  <a href="https://packagist.org/packages/yezzmedia/laravel-ops-settings"><img src="https://img.shields.io/packagist/l/yezzmedia/laravel-ops-settings?style=flat-square" alt="License"></a>
+</p>
+
+---
+
 # laravel-ops-settings
 
 Operator-managed global platform settings for the Yezz Media Laravel website platform.
 
 Provides six structured settings groups (identity, contact, brand, social, legal, website defaults) backed by [`spatie/laravel-settings`](https://github.com/spatie/laravel-settings) v3, with a cache-aware manager, guarded mutations, audit events, a foundation-integrated install flow, and a Filament-powered operator workspace.
+
+## Version
+
+Current release: `0.2.0`
 
 ## Requirements
 
