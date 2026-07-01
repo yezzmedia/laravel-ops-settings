@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace YezzMedia\OpsSettings\Install;
 
-use RuntimeException;
 use YezzMedia\Foundation\Data\InstallContext;
 use YezzMedia\Foundation\Install\InstallStep;
+use YezzMedia\Foundation\Install\OptionalInstallStep;
 use YezzMedia\OpsSettings\Support\OpsSettingsStoreSetup;
 
-final class EnsureOpsSettingsStoreReadyInstallStep implements InstallStep
+final class EnsureOpsSettingsStoreReadyInstallStep implements InstallStep, OptionalInstallStep
 {
     public function __construct(private readonly OpsSettingsStoreSetup $setup) {}
 
@@ -36,16 +36,30 @@ final class EnsureOpsSettingsStoreReadyInstallStep implements InstallStep
     public function handle(InstallContext $context): void
     {
         if (! $context->allowMigrations) {
-            throw new RuntimeException(
-                'The ops settings store is not ready or has pending settings migrations. '
-                .'Run `php artisan migrate` or rerun the install command with `--migrate`.',
+            fwrite(
+                STDERR,
+                "\n  \033[33;1mWARNING\033[39;22m  Ops settings store is not ready. Run 'php artisan migrate' or 'php artisan website:install --migrate'.\n\n"
             );
+
+            return;
         }
 
-        $this->setup->runMigrations();
+        try {
+            $this->setup->runMigrations();
+        } catch (\Throwable) {
+            // Migration may fail if tables already exist
+        }
 
         if (! $this->setup->storeReady()) {
-            throw new RuntimeException('The ops settings store is still not ready after running migrations.');
+            fwrite(
+                STDERR,
+                "\n  \033[33;1mWARNING\033[39;22m  Ops settings store could not be created. Check your database configuration.\n\n"
+            );
         }
+    }
+
+    public function isOptional(): bool
+    {
+        return true;
     }
 }

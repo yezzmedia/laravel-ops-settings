@@ -40,12 +40,12 @@ it('re-publishes migrations during refresh mode', function (): void {
     expect($setup->migrationsWereForced)->toBeTrue();
 });
 
-it('requires explicit migration permission before ensuring store readiness', function (): void {
+it('returns without throwing when migration permission is not granted before ensuring store readiness', function (): void {
     $setup = new FakeOpsSettingsStoreSetup(hasReadyStore: false);
     $step = new EnsureOpsSettingsStoreReadyInstallStep($setup);
 
     expect(fn () => $step->handle(new InstallContext))
-        ->toThrow(RuntimeException::class, 'The ops settings store is not ready');
+        ->not->toThrow(RuntimeException::class);
 });
 
 it('runs migrations when store is not ready and allowMigrations is true', function (): void {
