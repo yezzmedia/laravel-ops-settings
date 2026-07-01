@@ -1,6 +1,6 @@
 {
     "name": "yezzmedia/laravel-ops-settings",
-    "version": "0.2.3",
+    "version": "0.2.4",
     "description": "Operator-managed global platform settings for the Yezz Media Laravel website platform.",
     "type": "library",
     "license": "MIT",
