@@ -159,15 +159,51 @@ class OpsSettingsStoreSetup
     }
 
     /**
-     * Runs pending settings migrations using standard Laravel migrate.
+     * Runs only ops-settings-specific published migrations.
      */
     public function runMigrations(): void
     {
-        Artisan::call('migrate', ['--force' => true]);
+        $paths = $this->pendingMigrationPaths();
+
+        foreach ($paths as $path) {
+            Artisan::call('migrate', [
+                '--force' => true,
+                '--path' => $path,
+            ]);
+        }
 
         $this->settingsTableExistsMemo = null;
         $this->migrationsTableExistsMemo = null;
         $this->appliedMigrationNamesMemo = null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function pendingMigrationPaths(): array
+    {
+        $paths = [];
+        $publishedPath = database_path('migrations');
+
+        $applied = $this->migrationsTableExists()
+            ? $this->appliedMigrationNames(migrationsTableExists: true)
+            : [];
+
+        foreach ($this->publishableMigrationNames() as $name) {
+            $matches = glob($publishedPath.'/*_'.$name.'.php');
+
+            if (empty($matches)) {
+                continue;
+            }
+
+            $migrationKey = basename($matches[0], '.php');
+
+            if (! in_array($migrationKey, $applied, true)) {
+                $paths[] = str_replace(base_path().'/', '', $matches[0]);
+            }
+        }
+
+        return $paths;
     }
 
     /**
